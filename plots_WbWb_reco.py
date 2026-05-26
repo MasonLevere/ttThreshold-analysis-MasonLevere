@@ -5,7 +5,7 @@ date = datetime.date.today().isoformat()
 
 from treemaker_WbWb_reco import available_ecm, all_branches as branchList
 #branchList=[]
-branchList.append('BDT_score')
+#branchList.append('BDT_score')
 #branchList.append('nbjets')
 #branchList.append('nbjets_sig')
 #branchList.append('nbjets_cr')
@@ -29,10 +29,16 @@ def if3(cond, iftrue, iffalse):
     return iftrue if cond else iffalse
 
 
-channel = 'CHANNELHERE' #'had' if hadronic else 'semihad'
-ecm = ECMHERE
-useflav=useflavHERE  #here it means including all flav-related info
-usebtagged=usebtaggedHERE
+channel = 'semihad' #'had' if hadronic else 'semihad'
+ecm = '345'
+
+### exclude for simplicty
+#useflav=useflavHERE  #here it means including all flav-related info
+#usebtagged=usebtaggedHERE
+
+
+#pf="%s"%if3(usebtagged,'withbtaggedJet',if3(useflav,'withflav','noflav'))
+#pf=pf+"WPpt8"
 
 
 #channel = 'semihad'
@@ -46,21 +52,26 @@ usebtagged=usebtaggedHERE
 ##amusebtagged=False
 ##amecm = 355
 
-pf="%s"%if3(usebtagged,'withbtaggedJet',if3(useflav,'withflav','noflav'))
-pf=pf+"WPpt8"
-
 
 
 intLumi = 1
 intLumiLabel = "L = 0.036 ab^{-1}"
 ana_tex = "e^{+}e^{-} #rightarrow WbWb #rightarrow %s"%(channel)
 delphesVersion = "3.4.2"
-energy = ecm
+energy = float(ecm) / 1000.0
 collider = "FCC-ee"
 formats = ["png","pdf","root"]
-inputDir  = '/eos/cms/store/cmst3/group/top/anmehta/FCC//output_condor_06092024/WbWb/outputs/histmaker/{}/{}/'.format(channel,pf)
+
+
+basedir="/afs/cern.ch/user/m/mlevere/private/FCCTutorial/ttThreshold-analysis/outputs"
+
+
+
+inputDir  = '{}/histmaker/WbWb/{}'.format(basedir, channel)
 print('this is the inputDir',inputDir)
-outdir    = '/eos/user/a/anmehta/www/FCC_top/{}/{}/{}/{}/'.format(date,channel,pf,ecm)
+#outdir    = '/eos/user/a/anmehta/www/FCC_top/{}/{}/{}/{}/'.format(date,channel,pf,ecm)
+outdir  = '{}/plotmaker/WbWb/{}'.format(basedir, channel)
+
 print('saving plots here',outdir)
 
 plotStatUnc = True
@@ -69,7 +80,7 @@ colors["WbWb"] = ROOT.kRed
 colors["WW"] = ROOT.kBlue
 
 procs = {}
-procs["signal"] = {"WbWb": ["wzp6_ee_WbWb_{}_ecm{}".format(channel,ecm)]}
+procs["signal"] = {"WbWb": ["wzp6_ee_WbWb_ecm{}".format(ecm)]}
 procs["backgrounds"] = {"WW": ["p8_ee_WW_ecm{}".format(ecm)]}
 
 print(procs["signal"],procs["backgrounds"])

@@ -298,17 +298,17 @@ all_branches = [
     "nlep", "lep_p", 'lep_theta', 'lep_phi',
     "missing_p", "missing_p_theta", "missing_p_phi",
     "njets_R5",  "jet1_R5_p", "jet2_R5_p", "jet3_R5_p", "jet4_R5_p", "jet5_R5_p", "jet6_R5_p",
-    "jet1_R5_theta",  "jet2_R5_theta",  "jet3_R5_theta",  "jet4_R5_theta", "jet5_R5_theta", "jet6_R5_theta",
-    "jet1_R5_pflavor", "jet2_R5_pflavor", "jet3_R5_pflavor", "jet4_R5_pflavor", "jet5_R5_pflavor","jet6_R5_pflavor",
+    #"jet1_R5_theta",  "jet2_R5_theta",  "jet3_R5_theta",  "jet4_R5_theta", "jet5_R5_theta", "jet6_R5_theta",
+    #"jet1_R5_pflavor", "jet2_R5_pflavor", "jet3_R5_pflavor", "jet4_R5_pflavor", "jet5_R5_pflavor","jet6_R5_pflavor",
     "nbjets_R5_true", "ncjets_R5_true","nljets_R5_true","ngjets_R5_true",
     #"nbjets_R5_eff_p9", "nbjets_R5_eff_p89","nbjets_R5_eff_p91",
-    "jet1_R5_isG","jet2_R5_isG","jet3_R5_isG","jet4_R5_isG","jet5_R5_isG","jet6_R5_isG",                
-    "jet1_R5_isU","jet2_R5_isU","jet3_R5_isU","jet4_R5_isU","jet5_R5_isU","jet6_R5_isU",                
-    "jet1_R5_isB","jet2_R5_isB","jet3_R5_isB","jet4_R5_isB","jet5_R5_isB","jet6_R5_isB",                
-    "jet1_R5_isS","jet2_R5_isS","jet3_R5_isS","jet4_R5_isS","jet5_R5_isS","jet6_R5_isS",                
-    "jet1_R5_isC","jet2_R5_isC","jet3_R5_isC","jet4_R5_isC","jet5_R5_isC","jet6_R5_isC",                
-    "jet1_R5_isD","jet2_R5_isD","jet3_R5_isD","jet4_R5_isD","jet5_R5_isD","jet6_R5_isD",                                
-    "jet1_R5_isTAU","jet2_R5_isTAU","jet3_R5_isTAU","jet4_R5_isTAU","jet5_R5_isTAU","jet6_R5_isTAU",
+    #"jet1_R5_isG","jet2_R5_isG","jet3_R5_isG","jet4_R5_isG","jet5_R5_isG","jet6_R5_isG",                
+    #"jet1_R5_isU","jet2_R5_isU","jet3_R5_isU","jet4_R5_isU","jet5_R5_isU","jet6_R5_isU",                
+    #"jet1_R5_isB","jet2_R5_isB","jet3_R5_isB","jet4_R5_isB","jet5_R5_isB","jet6_R5_isB",                
+    #"jet1_R5_isS","jet2_R5_isS","jet3_R5_isS","jet4_R5_isS","jet5_R5_isS","jet6_R5_isS",                
+    #"jet1_R5_isC","jet2_R5_isC","jet3_R5_isC","jet4_R5_isC","jet5_R5_isC","jet6_R5_isC",                
+    #"jet1_R5_isD","jet2_R5_isD","jet3_R5_isD","jet4_R5_isD","jet5_R5_isD","jet6_R5_isD",                                
+    #"jet1_R5_isTAU","jet2_R5_isTAU","jet3_R5_isTAU","jet4_R5_isTAU","jet5_R5_isTAU","jet6_R5_isTAU",
     #"mbbar_p9","mbbar_p89","mbbar_p91",
      "bjet1_R5_true_p","ljet1_R5_true_p",
     ]
@@ -324,7 +324,7 @@ if saveExclJets: all_branches+=[ "njets", "jet1_p", "jet2_p", "jet3_p","jet4_p",
     "jet1_isG", "jet2_isG", "jet3_isG", "jet4_isG", "jet5_isG", "jet6_isG",
     "jet1_isQ", "jet2_isQ", "jet3_isQ", "jet4_isQ", "jet5_isQ", "jet6_isQ",
     "jet1_isS", "jet2_isS", "jet3_isS", "jet4_isS", "jet5_isS", "jet6_isS",
-    "jet1_isC", "jet2_isC", "jet3_isC", "jet4_isC", "jet5_isC", "jet6_isC",
+    "jet1_isC", "jet2_isC", "jet3_isC", "jet4_isC", "jet5_isC", "jet6_isC",]
     #"nbjets_R5_WPp5", "nbjets_R5_WPp8", "nbjets_R5_WPp85", "nbjets_R5_WPp9"]
 #print('saving these branches',all_branches)
 # Mandatory: RDFanalysis class where the use defines the operations on the TTree
@@ -553,27 +553,29 @@ class RDFanalysis:
 
         df = df.Define("jets_R5_p",           "JetClusteringUtils::get_p({})".format(jetClusteringHelper_R5.jets))
         df = df.Define("jets_R5_theta",       "JetClusteringUtils::get_theta({})".format(jetClusteringHelper_R5.jets))
-        df = df.Define("jet1_R5_p","jets_R5_p[0]")
-        df = df.Define("jet2_R5_p","jets_R5_p[1]")
-        df = df.Define("jet3_R5_p","jets_R5_p.size()>2 ? jets_R5_p[2] : -999")
-        df = df.Define("jet4_R5_p","jets_R5_p.size()>3 ? jets_R5_p[3] : -999")
-        df = df.Define("jet5_R5_p","jets_R5_p.size()>4 ? jets_R5_p[4] : -999")
-        df = df.Define("jet6_R5_p","jets_R5_p.size()>5 ? jets_R5_p[5] : -999")
 
-        df = df.Define("jet1_R5_theta","jets_R5_theta[0]")
-        df = df.Define("jet2_R5_theta","jets_R5_theta[1]")
-        df = df.Define("jet3_R5_theta","jets_R5_theta.size()>2 ? jets_R5_theta[2] : -999")
-        df = df.Define("jet4_R5_theta","jets_R5_theta.size()>3 ? jets_R5_theta[3] : -999")
-        df = df.Define("jet5_R5_theta","jets_R5_theta.size()>4 ? jets_R5_theta[4] : -999")
-        df = df.Define("jet6_R5_theta","jets_R5_theta.size()>5 ? jets_R5_theta[5] : -999")
+
+        # df = df.Define("jet1_R5_p","jets_R5_p[0]")
+        # df = df.Define("jet2_R5_p","jets_R5_p[1] ? jets_R5_p[2] : -999")
+        # df = df.Define("jet3_R5_p","jets_R5_p.size()>2 ? jets_R5_p[2] : -999")
+        # df = df.Define("jet4_R5_p","jets_R5_p.size()>3 ? jets_R5_p[3] : -999")
+        # df = df.Define("jet5_R5_p","jets_R5_p.size()>4 ? jets_R5_p[4] : -999")
+        # df = df.Define("jet6_R5_p","jets_R5_p.size()>5 ? jets_R5_p[5] : -999")
+
+        # df = df.Define("jet1_R5_theta","jets_R5_theta[0]")
+        # df = df.Define("jet2_R5_theta","jets_R5_theta[1]")
+        # df = df.Define("jet3_R5_theta","jets_R5_theta.size()>2 ? jets_R5_theta[2] : -999")
+        # df = df.Define("jet4_R5_theta","jets_R5_theta.size()>3 ? jets_R5_theta[3] : -999")
+        # df = df.Define("jet5_R5_theta","jets_R5_theta.size()>4 ? jets_R5_theta[4] : -999")
+        # df = df.Define("jet6_R5_theta","jets_R5_theta.size()>5 ? jets_R5_theta[5] : -999")
         
         df = df.Define("jets_R5_pflavor", "JetTaggingUtils::get_flavour({}, Particle)".format(jetClusteringHelper_R5.jets) )
-        df = df.Define("jet1_R5_pflavor","jets_R5_pflavor[0]")
-        df = df.Define("jet2_R5_pflavor","jets_R5_pflavor[1]")
-        df = df.Define("jet3_R5_pflavor","jets_R5_p.size()>2 ? jets_R5_pflavor[2] : -999")
-        df = df.Define("jet4_R5_pflavor","jets_R5_p.size()>3 ? jets_R5_pflavor[3] : -999")
-        df = df.Define("jet5_R5_pflavor","jets_R5_p.size()>4 ? jets_R5_pflavor[4] : -999")
-        df = df.Define("jet6_R5_pflavor","jets_R5_p.size()>5 ? jets_R5_pflavor[5] : -999")
+        # df = df.Define("jet1_R5_pflavor","jets_R5_pflavor[0]")
+        # df = df.Define("jet2_R5_pflavor","jets_R5_pflavor[1]")
+        # df = df.Define("jet3_R5_pflavor","jets_R5_p.size()>2 ? jets_R5_pflavor[2] : -999")
+        # df = df.Define("jet4_R5_pflavor","jets_R5_p.size()>3 ? jets_R5_pflavor[3] : -999")
+        # df = df.Define("jet5_R5_pflavor","jets_R5_p.size()>4 ? jets_R5_pflavor[4] : -999")
+        # df = df.Define("jet6_R5_pflavor","jets_R5_p.size()>5 ? jets_R5_pflavor[5] : -999")
         df = df.Define("njets_R5",       "return int(jets_R5_pflavor.size())")
 
 

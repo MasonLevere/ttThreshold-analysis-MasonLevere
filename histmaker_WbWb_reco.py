@@ -6,11 +6,13 @@ def if3(cond, iftrue, iffalse):
     return iftrue if cond else iffalse
 
 
-channel = 'CHANNELHERE' 
-ecm = 'ECMHERE'
+channel = 'semihad' 
+ecm = '345'
 
 pf='CONFHERE'
 
+
+print(available_ecm, 'avalible_ecm here')
             
 processList={key: value for key, value in all_processes.items() if ecm in available_ecm and ecm in key} 
 
@@ -20,14 +22,17 @@ print("these are the procs",processList)
 procDict = "FCCee_procDict_winter2023_IDEA.json"
 
 # Define the input dir (optional)
-basedir="/eos/cms/store/cmst3/group/top//FCC_tt_threshold/output_condor_20250212_1138/"
+basedir="/afs/cern.ch/user/m/mlevere/private/FCCTutorial/ttThreshold-analysis/outputs"
+#basedir="outputs"
 #basedir="/eos/cms/store/cmst3/group/top//FCC_tt_threshold/output_condor_20250130_1158/"
 #basedir="/eos/cms/store/cmst3/group/top/FCC_tt_threshold/output_condor_20241121_1142"
 
-inputDir="{}/WbWb/{}/{}/".format(basedir,channel,pf)
+#inputDir="{}/treemaker/WbWb/{}/{}/".format(basedir,channel,pf)
+inputDir="{}/treemaker/WbWb/{}/".format(basedir,channel)
+
 print("this is the inputDir",inputDir)
 # Optional: output directory, default is local running directory
-outputDir = "{}/WbWb/outputs/histmaker/{}/{}/".format(basedir,channel,pf)
+outputDir = "{}/histmaker/WbWb/{}/".format(basedir,channel)
 
 print('this is outdir',outputDir)
 
@@ -110,20 +115,26 @@ def build_graph(df, dataset):
     df_effp89_oneb    = df.Filter("nbjets_R5_eff_p89 == 1");
     df_effp89_twob    = df.Filter("nbjets_R5_eff_p89 > 1");
 
-
+    df_BDT_cut = df
+    df_BDT_zerobtag = df_effp9_zerob
+    df_BDT_onebtag = df_effp9_oneb
 
     
     
     for var in column_names:
         var = str(var) #"nlep",
-        if  var  not in ["lep_p", 'lep_theta', 'lep_phi',"BDT_score","missing_p", "missing_p_theta", "missing_p_phi","singlebin"] and  "R5" not in var and "mbbar" not in var:
+        if  var  not in ["nlep", "lep_p", 'lep_theta', 'lep_phi',"BDT_score","missing_p", "missing_p_theta", "missing_p_phi","singlebin"] and  "R5" not in var and "mbbar" not in var:
             continue 
-        if "is" in var : continue
+        elif "_is" in var:           binning = bins["tagger"]
+            
         #if "d_" in var : continue
         if var.endswith("_phi"):     binning = bins["phi"];
+    
         elif 'singlebin' in var :    binning = bins["singlebin"]
         elif 'nbjets' in var :       binning = bins["nbjets"]
         elif 'njets' in var :        binning = bins["njets"]
+        elif var == "nlep":
+            binning = bins["nlep"]
         
         elif "tagged" in var:        binning = bins["tagged"] 
         elif var == 'ntau_h':        binning = bins["nleps"]
@@ -167,7 +178,11 @@ def build_graph(df, dataset):
         results.append(df_njgt0_effp91_oneb.Histo1D(('njgt0_effp91_oneb_'    +var, "", *binning), var))
         results.append(df_njgt0_effp91_twob.Histo1D(('njgt0_effp91_twob_'    +var, "", *binning), var))
 
-        
+        results.append(df_BDT_cut.Histo1D(("BDT_cut_"+var, "", *binning), var))
+        results.append(df_BDT_zerobtag.Histo1D(("BDT_cut_zerobtag_"+var, "", *binning), var))
+        results.append(df_BDT_onebtag.Histo1D(("BDT_cut_onebtag_"+var, "", *binning), var))
+
+                
 
 #        results.append(df_BDT_zerobL.Histo1D(('BDT_cut_zerobtagl_'+var, "", *binning), var))
 #        results.append(df_BDT_onebL.Histo1D(('BDT_cut_onebtagl_'+var, "", *binning), var))
