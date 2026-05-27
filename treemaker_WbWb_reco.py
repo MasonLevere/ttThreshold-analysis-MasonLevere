@@ -229,11 +229,11 @@ saveExclJets = False
 if not str(ecm) in available_ecm:
     raise ValueError("ecm value not in available_ecm")
 
-channel = "CHANNELNAMEHERE"
+channel = "inclusive"
 
 if  channel not in ["lep","semihad","had"]:
     print("using defa channel settings")
-    channel="semihad"
+    #channel="semihad"
 print(channel)    
 
 processList={key: value for key, value in all_processes.items() if str(ecm) in available_ecm and str(ecm) in key } # (True if str('p8_ee_WW_ecm'+ecm) in key else str('wzp6_ee_WbWb_ecm'+ecm) in key)}  
@@ -298,7 +298,6 @@ jetClusteringHelper_R5 = None
 
 
 # create all combinations of quark pair names
-
 quark_pdg = {
             'd': 1,
             'u': 2,
@@ -308,57 +307,38 @@ quark_pdg = {
             't': 6,
         }
 
+lepton_pdg = {
+    'e':  (11, 12),
+    'mu': (13, 14),
+    'tau': (15, 16),
+}
+
+
 w_hadron_decay_names = []
 for (q1, id1), (q2, id2) in combinations(quark_pdg.items(), 2):
-    w_hadron_decay_names.append(f"W_to{q1}{q2}")
+    w_hadron_decay_names.append(f"Wplus_to_{q1}_{q2}")
+    w_hadron_decay_names.append(f"Wminus_to_{q1}_{q2}")
 
-
+w_lepton_decay_names = []
+for lep in lepton_pdg.keys():
+    w_lepton_decay_names.append(f"Wplus_to_{lep}_nu")
+    w_lepton_decay_names.append(f"Wminus_to_{lep}_nu")
 
 
 all_branches = [
     "nlep", "lep_p", 'lep_theta', 'lep_phi',
     "missing_p", "missing_p_theta", "missing_p_phi", "missing_pt",
-    "njets_R5",  # "jet1_R5_p", "jet2_R5_p", "jet3_R5_p", "jet4_R5_p", "jet5_R5_p", "jet6_R5_p",
-    #"jet1_R5_theta",  "jet2_R5_theta",  "jet3_R5_theta",  "jet4_R5_theta", "jet5_R5_theta", "jet6_R5_theta",
-    #"jet1_R5_pflavor", "jet2_R5_pflavor", "jet3_R5_pflavor", "jet4_R5_pflavor", "jet5_R5_pflavor","jet6_R5_pflavor",
+    "njets_R5",
     "nbjets_R5_true", "ncjets_R5_true","nljets_R5_true","ngjets_R5_true",
-    #"nbjets_R5_eff_p9", "nbjets_R5_eff_p89","nbjets_R5_eff_p91",
-    #"jet1_R5_isG","jet2_R5_isG","jet3_R5_isG","jet4_R5_isG","jet5_R5_isG","jet6_R5_isG",                
-    #"jet1_R5_isU","jet2_R5_isU","jet3_R5_isU","jet4_R5_isU","jet5_R5_isU","jet6_R5_isU",                
-    #"jet1_R5_isB","jet2_R5_isB","jet3_R5_isB","jet4_R5_isB","jet5_R5_isB","jet6_R5_isB",                
-    #"jet1_R5_isS","jet2_R5_isS","jet3_R5_isS","jet4_R5_isS","jet5_R5_isS","jet6_R5_isS",                
-    #"jet1_R5_isC","jet2_R5_isC","jet3_R5_isC","jet4_R5_isC","jet5_R5_isC","jet6_R5_isC",                
-    #"jet1_R5_isD","jet2_R5_isD","jet3_R5_isD","jet4_R5_isD","jet5_R5_isD","jet6_R5_isD",                                
-    #"jet1_R5_isTAU","jet2_R5_isTAU","jet3_R5_isTAU","jet4_R5_isTAU","jet5_R5_isTAU","jet6_R5_isTAU",
-    #"mbbar_p9","mbbar_p89","mbbar_p91",
      "bjet1_R5_true_p","ljet1_R5_true_p",
     "jets_R5_p", "jets_R5_theta", "jets_R5_pflavor",
     "bjets_R5_WPp5", "bjets_R5_WPp8", "bjets_R5_WPp85", "bjets_R5_WPp9",
     "nbjets_R5_WPp5", "nbjets_R5_WPp8", "nbjets_R5_WPp85", "nbjets_R5_WPp9",
-    
-    #
     "recojet_isG_R5", "recojet_isU_R5", "recojet_isB_R5", "recojet_isS_R5", 
     "recojet_isC_R5", "recojet_isD_R5", "recojet_isTAU_R5", 
     "HardWs_all",
 
-    ] + w_hadron_decay_names
-
-
-
-
-if saveExclJets: all_branches+=[ "njets", "jet1_p", "jet2_p", "jet3_p","jet4_p","jet5_p","jet6_p",
-    "jet1_theta", "jet2_theta", "jet3_theta","jet4_theta","jet5_theta","jet6_theta",
-    "jet1_phi", "jet2_phi", "jet3_phi","jet4_phi","jet5_phi","jet6_phi",
-    "jet1_isTau", "jet2_isTau", "jet3_isTau","jet4_isTau","jet5_isTau","jet6_isTau",
-    "nbjets_WPp5", "nbjets_WPp8",
-    "nbjets_WPp85", "nbjets_WPp9",
-    "d_12","d_23","d_34","d_45","d_56",
-    "jet1_isB", "jet2_isB", "jet3_isB", "jet4_isB", "jet5_isB", "jet6_isB",
-    "jet1_isG", "jet2_isG", "jet3_isG", "jet4_isG", "jet5_isG", "jet6_isG",
-    "jet1_isQ", "jet2_isQ", "jet3_isQ", "jet4_isQ", "jet5_isQ", "jet6_isQ",
-    "jet1_isS", "jet2_isS", "jet3_isS", "jet4_isS", "jet5_isS", "jet6_isS",
-    "jet1_isC", "jet2_isC", "jet3_isC", "jet4_isC", "jet5_isC", "jet6_isC",]
-    #"nbjets_R5_WPp5", "nbjets_R5_WPp8", "nbjets_R5_WPp85", "nbjets_R5_WPp9"]
+    ] + w_hadron_decay_names + w_lepton_decay_names
 
 
 
@@ -428,51 +408,52 @@ class RDFanalysis:
         elif  channel == "semihad":
             #semihad=True
             df = df.Filter("muons_sel_iso.size() + electrons_sel_iso.size() == 1")
-        else:
+        elif channel == "leptonic":
             #lep=True
             df = df.Filter("muons_sel_iso.size() + electrons_sel_iso.size() == 2")
 
-        if not (channel == "had"):
-            df = df.Define(
-                "muons_p", "FCCAnalyses::ReconstructedParticle::get_p(muons_sel_iso)"
-            )
+        # uncomment to restore channel seperating
+        # if not (channel == "had"):
+        #     df = df.Define(
+        #         "muons_p", "FCCAnalyses::ReconstructedParticle::get_p(muons_sel_iso)"
+        #     )
 
 
-            df = df.Define(
-                "electrons_p", "FCCAnalyses::ReconstructedParticle::get_p(electrons_sel_iso)"
-            )
+        #     df = df.Define(
+        #         "electrons_p", "FCCAnalyses::ReconstructedParticle::get_p(electrons_sel_iso)"
+        #     )
 
-            df = df.Define(
-                "muons_theta",
-                "FCCAnalyses::ReconstructedParticle::get_theta(muons_sel_iso)",
-            )
-            df = df.Define(
-                "muons_phi",
-                "FCCAnalyses::ReconstructedParticle::get_phi(muons_sel_iso)",
-            )
-            df = df.Define(
-                "muons_q",
-                "FCCAnalyses::ReconstructedParticle::get_charge(muons_sel_iso)",
-            )
-            df = df.Define(
-                "muons_n", "FCCAnalyses::ReconstructedParticle::get_n(muons_sel_iso)",
-            )
+        #     df = df.Define(
+        #         "muons_theta",
+        #         "FCCAnalyses::ReconstructedParticle::get_theta(muons_sel_iso)",
+        #     )
+        #     df = df.Define(
+        #         "muons_phi",
+        #         "FCCAnalyses::ReconstructedParticle::get_phi(muons_sel_iso)",
+        #     )
+        #     df = df.Define(
+        #         "muons_q",
+        #         "FCCAnalyses::ReconstructedParticle::get_charge(muons_sel_iso)",
+        #     )
+        #     df = df.Define(
+        #         "muons_n", "FCCAnalyses::ReconstructedParticle::get_n(muons_sel_iso)",
+        #     )
 
-            df = df.Define(
-                "electrons_theta",
-                "FCCAnalyses::ReconstructedParticle::get_theta(electrons_sel_iso)",
-            )
-            df = df.Define(
-                "electrons_phi",
-                "FCCAnalyses::ReconstructedParticle::get_phi(electrons_sel_iso)",
-                )
-            df = df.Define(
-                "electrons_q",
-                "FCCAnalyses::ReconstructedParticle::get_charge(electrons_sel_iso)",
-                )
-            df = df.Define(
-                "electrons_n", "FCCAnalyses::ReconstructedParticle::get_n(electrons_sel_iso)",
-            )
+        #     df = df.Define(
+        #         "electrons_theta",
+        #         "FCCAnalyses::ReconstructedParticle::get_theta(electrons_sel_iso)",
+        #     )
+        #     df = df.Define(
+        #         "electrons_phi",
+        #         "FCCAnalyses::ReconstructedParticle::get_phi(electrons_sel_iso)",
+        #         )
+        #     df = df.Define(
+        #         "electrons_q",
+        #         "FCCAnalyses::ReconstructedParticle::get_charge(electrons_sel_iso)",
+        #         )
+        #     df = df.Define(
+        #         "electrons_n", "FCCAnalyses::ReconstructedParticle::get_n(electrons_sel_iso)",
+        #     )
 
         
         ## here cluster jets in the events but first remove muons from the list of
@@ -526,22 +507,19 @@ class RDFanalysis:
 
         )
 
-        # df = df.Define(
-        #     "WDaughters",
-        #     "FCCAnalyses::MCParticle::get_list_of_particles_from_decay(HardWs_all, Particle, Particle#1.index)"
-        # )
-
-        # df = df.Define(
-        #     "StrangeCharm_WDaughters",
-        #     "FCCAnalyses::MCParticle::get_indices_MotherByIndex(24, {3, 4}, false, true, false)(Particle, Particle#1.index)"
-        # )
-
-
-        df = df.Alias("DaughterIndex", "Particle#1.index")
-
+         # quark_pdg = {
+        #     'd': 1,
+        #     'u': 2,
+        #     's': 3,
+        #     'c': 4,
+        #     'b': 5,
+        #     't': 6,
+        # }
         
     
         # loop over all quarks pair decays from W and saves the events by object to "W_to{q1}{q2}"
+        df = df.Alias("DaughterIndex", "Particle#1.index")
+
         dup_tracker = []
 
         for q1, id1 in quark_pdg.items():
@@ -552,19 +530,71 @@ class RDFanalysis:
 
                 if q2 in dup_tracker:
                     continue
+
+                # find daughter indexs of wplus and wminus seperately
                 df = df.Define(
-                    f"W_to{q1}{q2}_sel",
-                    f"FCCAnalyses::MCParticle::get_indices(24, {{{id1}, {id2}}}, false, true, true, false)(Particle, DaughterIndex)"
+                    f"Wplus_to_{q1}_{q2}_sel",
+                    f"FCCAnalyses::MCParticle::get_indices(24, {{{id1}, {id2}}}, false, false, true, false)(Particle, DaughterIndex)"
                 )
 
                 df = df.Define(
-                    f"W_to{q1}{q2}",
-                    f"FCCAnalyses::ZHfunctions::get_mc(W_to{q1}{q2}_sel, Particle)"
+                    f"Wminus_to_{q1}_{q2}_sel",
+                    f"FCCAnalyses::MCParticle::get_indices(-24, {{{id1}, {id2}}}, false, false, true, false)(Particle, DaughterIndex)"
+                )
+
+                # get objects from indexs
+                df = df.Define(
+                    f"Wplus_to_{q1}_{q2}",
+                    f"FCCAnalyses::ZHfunctions::get_mc(Wplus_to_{q1}_{q2}_sel, Particle)"
                 )
 
                 df = df.Define(
-                    f"W_to{q1}{q2}_n"
-                    f"FCCAnalyses::MCParticle::get_n(W_to{q1}{q2})"
+                    f"Wminus_to_{q1}_{q2}",
+                    f"FCCAnalyses::ZHfunctions::get_mc(Wminus_to_{q1}_{q2}_sel, Particle)"
+                )
+
+                # final output for smaller tree
+                df = df.Define(
+                    f"Wplus_to_{q1}_{q2}_n",
+                    f"FCCAnalyses::MCParticle::get_n(Wplus_to_{q1}_{q2})"
+                )
+
+                df = df.Define(
+                    f"Wminus_to_{q1}_{q2}_n",
+                    f"FCCAnalyses::MCParticle::get_n(Wminus_to_{q1}_{q2})"
+                )
+
+        for lep, ids in lepton_pdg.items():
+            lep_id, nu_id = ids
+
+            df = df.Define(
+                    f"Wplus_to_{lep}_nu_sel",
+                    f"FCCAnalyses::MCParticle::get_indices(24, {{{lep_id}, {nu_id}}}, false, false, true, false)(Particle, DaughterIndex)"
+                )
+
+            df = df.Define(
+                    f"Wminus_to_{lep}_nu_sel",
+                    f"FCCAnalyses::MCParticle::get_indices(-24, {{{lep_id}, {nu_id}}}, false, false, true, false)(Particle, DaughterIndex)"
+                )
+
+            df = df.Define(
+                    f"Wplus_to_{lep}_nu",
+                    f"FCCAnalyses::ZHfunctions::get_mc(Wplus_to_{lep}_nu_sel, Particle)"
+                )
+
+            df = df.Define(
+                    f"Wminus_to_{lep}_nu",
+                    f"FCCAnalyses::ZHfunctions::get_mc(Wminus_to_{lep}_nu_sel, Particle)"
+                )
+
+            df = df.Define(
+                    f"Wplus_to_{lep}_nu_n",
+                    f"FCCAnalyses::MCParticle::get_n(Wplus_to_{lep}_nu)"
+                )
+
+            df = df.Define(
+                    f"Wminus_to_{lep}_nu_n",
+                    f"FCCAnalyses::MCParticle::get_n(Wminus_to_{lep}_nu)"
                 )
 
 

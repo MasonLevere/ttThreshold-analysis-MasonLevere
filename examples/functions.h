@@ -281,7 +281,7 @@ float get_cosTheta_miss(Vec_rp met){
     return costheta;
 }
 
-
+// get objects from indexs
 ROOT::VecOps::RVec<edm4hep::MCParticleData>
 get_mc(ROOT::VecOps::RVec<int> indexes,
     ROOT::VecOps::RVec<edm4hep::MCParticleData> inParticles) {
@@ -295,6 +295,44 @@ get_mc(ROOT::VecOps::RVec<int> indexes,
   return result;
 }
 
+// modify get_indices to not just take the first decay found since we are interested in ww process
+
+// get_indices::get_indices_all_occurances( int pdg_mother, std::vector<int> pdg_daughters, bool stableDaughters, bool chargeConjugateMother, bool chargeConjugateDaughters, bool inclusiveDecay) {
+//   m_pdg_mother = pdg_mother;
+//   m_pdg_daughters = pdg_daughters;
+//   m_stableDaughters = stableDaughters;
+//   m_chargeConjugateMother = chargeConjugateMother;
+//   m_chargeConjugateDaughters = chargeConjugateDaughters;
+//   m_inclusiveDecay = inclusiveDecay;
+// } ;
+
+// ROOT::VecOps::RVec<int>  get_indices::operator() ( ROOT::VecOps::RVec<edm4hep::MCParticleData> in, ROOT::VecOps::RVec<int> ind) {
+
+//    // Look for a specific decay specified by the mother PDG_id and
+//    // the PDG_ids of the daughters
+//    // Returns a vector with the indices, in the Particle block, of the mother and of
+//    // the daughters - in the order defined by std::vector<int> pdg_daughters.
+//    //
+//    // In case there are several such decays in the event, keep only the first one.
+
+//    ROOT::VecOps::RVec<int>  result;
+
+//    for ( int imother =0; imother < in.size(); imother ++){
+//      int pdg = in[imother].PDG ;
+//      bool found_a_mother = false;
+//      if ( ! m_chargeConjugateMother ) found_a_mother = ( pdg == m_pdg_mother );
+//      if ( m_chargeConjugateMother )   found_a_mother = ( abs(pdg) == abs(m_pdg_mother) ) ;
+//      if ( ! found_a_mother ) continue;
+
+//      ROOT::VecOps::RVec<int> a = get_indices_MotherByIndex( imother, m_pdg_daughters, m_stableDaughters, m_chargeConjugateDaughters, m_inclusiveDecay, in, ind );
+//      if ( a.size() != 0 ) {
+//         result = a;
+//         break;    // return the first decay found
+//      }
+
+//    }
+//    return result;
+// }
 
 
 }}
