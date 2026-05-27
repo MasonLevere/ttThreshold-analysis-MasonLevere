@@ -1,5 +1,6 @@
 import os, copy
 import urllib
+from itertools import combinations
 
 # list of processes
 all_processes = {
@@ -294,24 +295,56 @@ jetFlavourHelper_R5 = None
 jetClusteringHelper = None
 jetClusteringHelper_R5 = None
 
+
+
+# create all combinations of quark pair names
+
+quark_pdg = {
+            'd': 1,
+            'u': 2,
+            's': 3,
+            'c': 4,
+            'b': 5,
+            't': 6,
+        }
+
+w_hadron_decay_names = []
+for (q1, id1), (q2, id2) in combinations(quark_pdg.items(), 2):
+    w_hadron_decay_names.append(f"W_to{q1}{q2}")
+
+
+
+
 all_branches = [
     "nlep", "lep_p", 'lep_theta', 'lep_phi',
-    "missing_p", "missing_p_theta", "missing_p_phi",
-    "njets_R5",  "jet1_R5_p", "jet2_R5_p", "jet3_R5_p", "jet4_R5_p", "jet5_R5_p", "jet6_R5_p",
-    "jet1_R5_theta",  "jet2_R5_theta",  "jet3_R5_theta",  "jet4_R5_theta", "jet5_R5_theta", "jet6_R5_theta",
-    "jet1_R5_pflavor", "jet2_R5_pflavor", "jet3_R5_pflavor", "jet4_R5_pflavor", "jet5_R5_pflavor","jet6_R5_pflavor",
+    "missing_p", "missing_p_theta", "missing_p_phi", "missing_pt",
+    "njets_R5",  # "jet1_R5_p", "jet2_R5_p", "jet3_R5_p", "jet4_R5_p", "jet5_R5_p", "jet6_R5_p",
+    #"jet1_R5_theta",  "jet2_R5_theta",  "jet3_R5_theta",  "jet4_R5_theta", "jet5_R5_theta", "jet6_R5_theta",
+    #"jet1_R5_pflavor", "jet2_R5_pflavor", "jet3_R5_pflavor", "jet4_R5_pflavor", "jet5_R5_pflavor","jet6_R5_pflavor",
     "nbjets_R5_true", "ncjets_R5_true","nljets_R5_true","ngjets_R5_true",
     #"nbjets_R5_eff_p9", "nbjets_R5_eff_p89","nbjets_R5_eff_p91",
-    "jet1_R5_isG","jet2_R5_isG","jet3_R5_isG","jet4_R5_isG","jet5_R5_isG","jet6_R5_isG",                
-    "jet1_R5_isU","jet2_R5_isU","jet3_R5_isU","jet4_R5_isU","jet5_R5_isU","jet6_R5_isU",                
-    "jet1_R5_isB","jet2_R5_isB","jet3_R5_isB","jet4_R5_isB","jet5_R5_isB","jet6_R5_isB",                
-    "jet1_R5_isS","jet2_R5_isS","jet3_R5_isS","jet4_R5_isS","jet5_R5_isS","jet6_R5_isS",                
-    "jet1_R5_isC","jet2_R5_isC","jet3_R5_isC","jet4_R5_isC","jet5_R5_isC","jet6_R5_isC",                
-    "jet1_R5_isD","jet2_R5_isD","jet3_R5_isD","jet4_R5_isD","jet5_R5_isD","jet6_R5_isD",                                
-    "jet1_R5_isTAU","jet2_R5_isTAU","jet3_R5_isTAU","jet4_R5_isTAU","jet5_R5_isTAU","jet6_R5_isTAU",
+    #"jet1_R5_isG","jet2_R5_isG","jet3_R5_isG","jet4_R5_isG","jet5_R5_isG","jet6_R5_isG",                
+    #"jet1_R5_isU","jet2_R5_isU","jet3_R5_isU","jet4_R5_isU","jet5_R5_isU","jet6_R5_isU",                
+    #"jet1_R5_isB","jet2_R5_isB","jet3_R5_isB","jet4_R5_isB","jet5_R5_isB","jet6_R5_isB",                
+    #"jet1_R5_isS","jet2_R5_isS","jet3_R5_isS","jet4_R5_isS","jet5_R5_isS","jet6_R5_isS",                
+    #"jet1_R5_isC","jet2_R5_isC","jet3_R5_isC","jet4_R5_isC","jet5_R5_isC","jet6_R5_isC",                
+    #"jet1_R5_isD","jet2_R5_isD","jet3_R5_isD","jet4_R5_isD","jet5_R5_isD","jet6_R5_isD",                                
+    #"jet1_R5_isTAU","jet2_R5_isTAU","jet3_R5_isTAU","jet4_R5_isTAU","jet5_R5_isTAU","jet6_R5_isTAU",
     #"mbbar_p9","mbbar_p89","mbbar_p91",
      "bjet1_R5_true_p","ljet1_R5_true_p",
-    ]
+    "jets_R5_p", "jets_R5_theta", "jets_R5_pflavor",
+    "bjets_R5_WPp5", "bjets_R5_WPp8", "bjets_R5_WPp85", "bjets_R5_WPp9",
+    "nbjets_R5_WPp5", "nbjets_R5_WPp8", "nbjets_R5_WPp85", "nbjets_R5_WPp9",
+    
+    #
+    "recojet_isG_R5", "recojet_isU_R5", "recojet_isB_R5", "recojet_isS_R5", 
+    "recojet_isC_R5", "recojet_isD_R5", "recojet_isTAU_R5", 
+    "HardWs_all",
+
+    ] + w_hadron_decay_names
+
+
+
 
 if saveExclJets: all_branches+=[ "njets", "jet1_p", "jet2_p", "jet3_p","jet4_p","jet5_p","jet6_p",
     "jet1_theta", "jet2_theta", "jet3_theta","jet4_theta","jet5_theta","jet6_theta",
@@ -324,8 +357,11 @@ if saveExclJets: all_branches+=[ "njets", "jet1_p", "jet2_p", "jet3_p","jet4_p",
     "jet1_isG", "jet2_isG", "jet3_isG", "jet4_isG", "jet5_isG", "jet6_isG",
     "jet1_isQ", "jet2_isQ", "jet3_isQ", "jet4_isQ", "jet5_isQ", "jet6_isQ",
     "jet1_isS", "jet2_isS", "jet3_isS", "jet4_isS", "jet5_isS", "jet6_isS",
-    "jet1_isC", "jet2_isC", "jet3_isC", "jet4_isC", "jet5_isC", "jet6_isC",
+    "jet1_isC", "jet2_isC", "jet3_isC", "jet4_isC", "jet5_isC", "jet6_isC",]
     #"nbjets_R5_WPp5", "nbjets_R5_WPp8", "nbjets_R5_WPp85", "nbjets_R5_WPp9"]
+
+
+
 #print('saving these branches',all_branches)
 # Mandatory: RDFanalysis class where the use defines the operations on the TTree
 class RDFanalysis:
@@ -333,6 +369,9 @@ class RDFanalysis:
     # __________________________________________________________
     # Mandatory: analysers funtion to define the analysers to process, please make sure you return the last dataframe, in this example it is df2
     def analysers(df):
+
+
+    
 
         # __________________________________________________________
         # Mandatory: analysers funtion to define the analysers to process, please make sure you return the last dataframe, in this example it is df2
@@ -472,6 +511,79 @@ class RDFanalysis:
             "Bz": "magFieldBz",
         }
 
+        # want to get some gen level information too
+            # use this function to get quarks of Ws get_indices_MotherByIndex
+
+            # first, select Ws
+        df = df.Define(
+            "Ws_all",
+            "FCCAnalyses::MCParticle::sel_pdgID(24, true)(Particle)"
+        )
+
+        df = df.Define(
+            "HardWs_all",
+            "FCCAnalyses::MCParticle::sel_genStatus(22)(Ws_all)"
+
+        )
+
+        # df = df.Define(
+        #     "WDaughters",
+        #     "FCCAnalyses::MCParticle::get_list_of_particles_from_decay(HardWs_all, Particle, Particle#1.index)"
+        # )
+
+        # df = df.Define(
+        #     "StrangeCharm_WDaughters",
+        #     "FCCAnalyses::MCParticle::get_indices_MotherByIndex(24, {3, 4}, false, true, false)(Particle, Particle#1.index)"
+        # )
+
+
+        df = df.Alias("DaughterIndex", "Particle#1.index")
+
+        
+    
+        # loop over all quarks pair decays from W and saves the events by object to "W_to{q1}{q2}"
+        dup_tracker = []
+
+        for q1, id1 in quark_pdg.items():
+
+            dup_tracker.append(q1)
+
+            for q2, id2 in quark_pdg.items():
+
+                if q2 in dup_tracker:
+                    continue
+                df = df.Define(
+                    f"W_to{q1}{q2}_sel",
+                    f"FCCAnalyses::MCParticle::get_indices(24, {{{id1}, {id2}}}, false, true, true, false)(Particle, DaughterIndex)"
+                )
+
+                df = df.Define(
+                    f"W_to{q1}{q2}",
+                    f"FCCAnalyses::ZHfunctions::get_mc(W_to{q1}{q2}_sel, Particle)"
+                )
+
+                df = df.Define(
+                    f"W_to{q1}{q2}_n"
+                    f"FCCAnalyses::MCParticle::get_n(W_to{q1}{q2})"
+                )
+
+
+        # ReconstructedParticle::get(Electron0, ReconstructedParticles)
+
+        # )
+
+        # df = df.Define(
+        #     "WDaughters",
+        #     "FCCAnalyses::MCParticle::get_list_of_particles_from_decay()"
+        # )
+
+
+
+        # we only want hard-Ws, PDG=24 and generator status=22
+
+
+
+
         nJets = 4 if  channel == "semihad" else 6
 
         collections_noleps = copy.deepcopy(collections)
@@ -536,6 +648,13 @@ class RDFanalysis:
             'missing_p_phi', 'ReconstructedParticle::get_phi(MissingET)[0]',
         )
 
+
+        # add transverse momentum
+
+        df = df.Define(
+            'missing_pt', 'ReconstructedParticle::get_pt(MissingET)[0]',
+        )
+
         if    saveExclJets:
             df = df.Define(
                 "jets_p4",
@@ -553,27 +672,29 @@ class RDFanalysis:
 
         df = df.Define("jets_R5_p",           "JetClusteringUtils::get_p({})".format(jetClusteringHelper_R5.jets))
         df = df.Define("jets_R5_theta",       "JetClusteringUtils::get_theta({})".format(jetClusteringHelper_R5.jets))
-        df = df.Define("jet1_R5_p","jets_R5_p[0]")
-        df = df.Define("jet2_R5_p","jets_R5_p[1]")
-        df = df.Define("jet3_R5_p","jets_R5_p.size()>2 ? jets_R5_p[2] : -999")
-        df = df.Define("jet4_R5_p","jets_R5_p.size()>3 ? jets_R5_p[3] : -999")
-        df = df.Define("jet5_R5_p","jets_R5_p.size()>4 ? jets_R5_p[4] : -999")
-        df = df.Define("jet6_R5_p","jets_R5_p.size()>5 ? jets_R5_p[5] : -999")
 
-        df = df.Define("jet1_R5_theta","jets_R5_theta[0]")
-        df = df.Define("jet2_R5_theta","jets_R5_theta[1]")
-        df = df.Define("jet3_R5_theta","jets_R5_theta.size()>2 ? jets_R5_theta[2] : -999")
-        df = df.Define("jet4_R5_theta","jets_R5_theta.size()>3 ? jets_R5_theta[3] : -999")
-        df = df.Define("jet5_R5_theta","jets_R5_theta.size()>4 ? jets_R5_theta[4] : -999")
-        df = df.Define("jet6_R5_theta","jets_R5_theta.size()>5 ? jets_R5_theta[5] : -999")
+
+        # df = df.Define("jet1_R5_p","jets_R5_p[0]")
+        # df = df.Define("jet2_R5_p","jets_R5_p[1] ? jets_R5_p[2] : -999")
+        # df = df.Define("jet3_R5_p","jets_R5_p.size()>2 ? jets_R5_p[2] : -999")
+        # df = df.Define("jet4_R5_p","jets_R5_p.size()>3 ? jets_R5_p[3] : -999")
+        # df = df.Define("jet5_R5_p","jets_R5_p.size()>4 ? jets_R5_p[4] : -999")
+        # df = df.Define("jet6_R5_p","jets_R5_p.size()>5 ? jets_R5_p[5] : -999")
+
+        # df = df.Define("jet1_R5_theta","jets_R5_theta[0]")
+        # df = df.Define("jet2_R5_theta","jets_R5_theta[1]")
+        # df = df.Define("jet3_R5_theta","jets_R5_theta.size()>2 ? jets_R5_theta[2] : -999")
+        # df = df.Define("jet4_R5_theta","jets_R5_theta.size()>3 ? jets_R5_theta[3] : -999")
+        # df = df.Define("jet5_R5_theta","jets_R5_theta.size()>4 ? jets_R5_theta[4] : -999")
+        # df = df.Define("jet6_R5_theta","jets_R5_theta.size()>5 ? jets_R5_theta[5] : -999")
         
         df = df.Define("jets_R5_pflavor", "JetTaggingUtils::get_flavour({}, Particle)".format(jetClusteringHelper_R5.jets) )
-        df = df.Define("jet1_R5_pflavor","jets_R5_pflavor[0]")
-        df = df.Define("jet2_R5_pflavor","jets_R5_pflavor[1]")
-        df = df.Define("jet3_R5_pflavor","jets_R5_p.size()>2 ? jets_R5_pflavor[2] : -999")
-        df = df.Define("jet4_R5_pflavor","jets_R5_p.size()>3 ? jets_R5_pflavor[3] : -999")
-        df = df.Define("jet5_R5_pflavor","jets_R5_p.size()>4 ? jets_R5_pflavor[4] : -999")
-        df = df.Define("jet6_R5_pflavor","jets_R5_p.size()>5 ? jets_R5_pflavor[5] : -999")
+        # df = df.Define("jet1_R5_pflavor","jets_R5_pflavor[0]")
+        # df = df.Define("jet2_R5_pflavor","jets_R5_pflavor[1]")
+        # df = df.Define("jet3_R5_pflavor","jets_R5_p.size()>2 ? jets_R5_pflavor[2] : -999")
+        # df = df.Define("jet4_R5_pflavor","jets_R5_p.size()>3 ? jets_R5_pflavor[3] : -999")
+        # df = df.Define("jet5_R5_pflavor","jets_R5_p.size()>4 ? jets_R5_pflavor[4] : -999")
+        # df = df.Define("jet6_R5_pflavor","jets_R5_p.size()>5 ? jets_R5_pflavor[5] : -999")
         df = df.Define("njets_R5",       "return int(jets_R5_pflavor.size())")
 
 
@@ -631,68 +752,68 @@ class RDFanalysis:
         # df = df.Define("mbbar_p91", "nbjets_R5_eff_p91 >  1 ? JetConstituentsUtils::InvariantMass(bjet_R5_eff_p91_p4[0], bjet_R5_eff_p91_p4[1]) : -999")
         # df = df.Define("mbbar_p89", "nbjets_R5_eff_p89 >  1 ? JetConstituentsUtils::InvariantMass(bjet_R5_eff_p89_p4[0], bjet_R5_eff_p89_p4[1]) : -999")
 
+
+        # df = df.Define("jet1_R5_isG", "recojet_isG_R5[0]")
+        # df = df.Define("jet2_R5_isG", "recojet_isG_R5[1]")
+        # df = df.Define("jet3_R5_isG", "jets_R5_p.size()>2 ? recojet_isG_R5[2] : -999")
+        # df = df.Define("jet4_R5_isG", "jets_R5_p.size()>3 ? recojet_isG_R5[3] : -999")
+        # df = df.Define("jet5_R5_isG", "jets_R5_p.size()>4 ? recojet_isG_R5[4] : -999")
+        # df = df.Define("jet6_R5_isG", "jets_R5_p.size()>5 ? recojet_isG_R5[5] : -999")
+
+        # df = df.Define("jet1_R5_isU", "recojet_isU_R5[0]")
+        # df = df.Define("jet2_R5_isU", "recojet_isU_R5[1]")
+        # df = df.Define("jet3_R5_isU", "jets_R5_p.size()>2 ? recojet_isU_R5[2] : -999")
+        # df = df.Define("jet4_R5_isU", "jets_R5_p.size()>3 ? recojet_isU_R5[3] : -999")
+        # df = df.Define("jet5_R5_isU", "jets_R5_p.size()>4 ? recojet_isU_R5[4] : -999")
+        # df = df.Define("jet6_R5_isU", "jets_R5_p.size()>5 ? recojet_isU_R5[5] : -999")
+
+        # df = df.Define("jet1_R5_isB", "recojet_isB_R5[0]")
+        # df = df.Define("jet2_R5_isB", "recojet_isB_R5[1]")
+        # df = df.Define("jet3_R5_isB", "jets_R5_p.size()>2 ? recojet_isB_R5[2] : -999")
+        # df = df.Define("jet4_R5_isB", "jets_R5_p.size()>3 ? recojet_isB_R5[3] : -999")
+        # df = df.Define("jet5_R5_isB", "jets_R5_p.size()>4 ? recojet_isB_R5[4] : -999")
+        # df = df.Define("jet6_R5_isB", "jets_R5_p.size()>5 ? recojet_isB_R5[5] : -999")
         
+        # df = df.Define("jet1_R5_isS", "recojet_isS_R5[0]")
+        # df = df.Define("jet2_R5_isS", "recojet_isS_R5[1]")
+        # df = df.Define("jet3_R5_isS", "jets_R5_p.size()>2 ? recojet_isS_R5[2] : -999")
+        # df = df.Define("jet4_R5_isS", "jets_R5_p.size()>3 ? recojet_isS_R5[3] : -999")
+        # df = df.Define("jet5_R5_isS", "jets_R5_p.size()>4 ? recojet_isS_R5[4] : -999")
+        # df = df.Define("jet6_R5_isS", "jets_R5_p.size()>5 ? recojet_isS_R5[5] : -999")
 
-        df = df.Define("jet1_R5_isG", "recojet_isG_R5[0]")
-        df = df.Define("jet2_R5_isG", "recojet_isG_R5[1]")
-        df = df.Define("jet3_R5_isG", "jets_R5_p.size()>2 ? recojet_isG_R5[2] : -999")
-        df = df.Define("jet4_R5_isG", "jets_R5_p.size()>3 ? recojet_isG_R5[3] : -999")
-        df = df.Define("jet5_R5_isG", "jets_R5_p.size()>4 ? recojet_isG_R5[4] : -999")
-        df = df.Define("jet6_R5_isG", "jets_R5_p.size()>5 ? recojet_isG_R5[5] : -999")
+        # df = df.Define("jet1_R5_isC", "recojet_isC_R5[0]")
+        # df = df.Define("jet2_R5_isC", "recojet_isC_R5[1]")
+        # df = df.Define("jet3_R5_isC", "jets_R5_p.size()>2 ? recojet_isC_R5[2] : -999")
+        # df = df.Define("jet4_R5_isC", "jets_R5_p.size()>3 ? recojet_isC_R5[3] : -999")
+        # df = df.Define("jet5_R5_isC", "jets_R5_p.size()>4 ? recojet_isC_R5[4] : -999")
+        # df = df.Define("jet6_R5_isC", "jets_R5_p.size()>5 ? recojet_isC_R5[5] : -999")
 
-        df = df.Define("jet1_R5_isU", "recojet_isU_R5[0]")
-        df = df.Define("jet2_R5_isU", "recojet_isU_R5[1]")
-        df = df.Define("jet3_R5_isU", "jets_R5_p.size()>2 ? recojet_isU_R5[2] : -999")
-        df = df.Define("jet4_R5_isU", "jets_R5_p.size()>3 ? recojet_isU_R5[3] : -999")
-        df = df.Define("jet5_R5_isU", "jets_R5_p.size()>4 ? recojet_isU_R5[4] : -999")
-        df = df.Define("jet6_R5_isU", "jets_R5_p.size()>5 ? recojet_isU_R5[5] : -999")
+        # df = df.Define("jet1_R5_isD", "recojet_isD_R5[0]")
+        # df = df.Define("jet2_R5_isD", "recojet_isD_R5[1]")
+        # df = df.Define("jet3_R5_isD", "jets_R5_p.size()>2 ? recojet_isD_R5[2] : -999")
+        # df = df.Define("jet4_R5_isD", "jets_R5_p.size()>3 ? recojet_isD_R5[3] : -999")
+        # df = df.Define("jet5_R5_isD", "jets_R5_p.size()>4 ? recojet_isD_R5[4] : -999")
+        # df = df.Define("jet6_R5_isD", "jets_R5_p.size()>5 ? recojet_isD_R5[5] : -999")
 
-        df = df.Define("jet1_R5_isB", "recojet_isB_R5[0]")
-        df = df.Define("jet2_R5_isB", "recojet_isB_R5[1]")
-        df = df.Define("jet3_R5_isB", "jets_R5_p.size()>2 ? recojet_isB_R5[2] : -999")
-        df = df.Define("jet4_R5_isB", "jets_R5_p.size()>3 ? recojet_isB_R5[3] : -999")
-        df = df.Define("jet5_R5_isB", "jets_R5_p.size()>4 ? recojet_isB_R5[4] : -999")
-        df = df.Define("jet6_R5_isB", "jets_R5_p.size()>5 ? recojet_isB_R5[5] : -999")
-        
-        df = df.Define("jet1_R5_isS", "recojet_isS_R5[0]")
-        df = df.Define("jet2_R5_isS", "recojet_isS_R5[1]")
-        df = df.Define("jet3_R5_isS", "jets_R5_p.size()>2 ? recojet_isS_R5[2] : -999")
-        df = df.Define("jet4_R5_isS", "jets_R5_p.size()>3 ? recojet_isS_R5[3] : -999")
-        df = df.Define("jet5_R5_isS", "jets_R5_p.size()>4 ? recojet_isS_R5[4] : -999")
-        df = df.Define("jet6_R5_isS", "jets_R5_p.size()>5 ? recojet_isS_R5[5] : -999")
-
-        df = df.Define("jet1_R5_isC", "recojet_isC_R5[0]")
-        df = df.Define("jet2_R5_isC", "recojet_isC_R5[1]")
-        df = df.Define("jet3_R5_isC", "jets_R5_p.size()>2 ? recojet_isC_R5[2] : -999")
-        df = df.Define("jet4_R5_isC", "jets_R5_p.size()>3 ? recojet_isC_R5[3] : -999")
-        df = df.Define("jet5_R5_isC", "jets_R5_p.size()>4 ? recojet_isC_R5[4] : -999")
-        df = df.Define("jet6_R5_isC", "jets_R5_p.size()>5 ? recojet_isC_R5[5] : -999")
-
-        df = df.Define("jet1_R5_isD", "recojet_isD_R5[0]")
-        df = df.Define("jet2_R5_isD", "recojet_isD_R5[1]")
-        df = df.Define("jet3_R5_isD", "jets_R5_p.size()>2 ? recojet_isD_R5[2] : -999")
-        df = df.Define("jet4_R5_isD", "jets_R5_p.size()>3 ? recojet_isD_R5[3] : -999")
-        df = df.Define("jet5_R5_isD", "jets_R5_p.size()>4 ? recojet_isD_R5[4] : -999")
-        df = df.Define("jet6_R5_isD", "jets_R5_p.size()>5 ? recojet_isD_R5[5] : -999")
-
-        df = df.Define("jet1_R5_isTAU", "recojet_isTAU_R5[0]")
-        df = df.Define("jet2_R5_isTAU", "recojet_isTAU_R5[1]")
-        df = df.Define("jet3_R5_isTAU", "jets_R5_p.size()>2 ? recojet_isTAU_R5[2] : -999")
-        df = df.Define("jet4_R5_isTAU", "jets_R5_p.size()>3 ? recojet_isTAU_R5[3] : -999")
-        df = df.Define("jet5_R5_isTAU", "jets_R5_p.size()>4 ? recojet_isTAU_R5[4] : -999")
-        df = df.Define("jet6_R5_isTAU", "jets_R5_p.size()>5 ? recojet_isTAU_R5[5] : -999")
+        # df = df.Define("jet1_R5_isTAU", "recojet_isTAU_R5[0]")
+        # df = df.Define("jet2_R5_isTAU", "recojet_isTAU_R5[1]")
+        # df = df.Define("jet3_R5_isTAU", "jets_R5_p.size()>2 ? recojet_isTAU_R5[2] : -999")
+        # df = df.Define("jet4_R5_isTAU", "jets_R5_p.size()>3 ? recojet_isTAU_R5[3] : -999")
+        # df = df.Define("jet5_R5_isTAU", "jets_R5_p.size()>4 ? recojet_isTAU_R5[4] : -999")
+        # df = df.Define("jet6_R5_isTAU", "jets_R5_p.size()>5 ? recojet_isTAU_R5[5] : -999")
 
         df = df.Define("jets_R5_isB","recojet_isB_R5")
         
-        # df = df.Define("bjets_R5_WPp5","ZHfunctions::sel_btag(0.5)(jets_R5_isB)")
-        # df = df.Define("bjets_R5_WPp8","ZHfunctions::sel_btag(0.8)(jets_R5_isB)")
-        # df = df.Define("bjets_R5_WPp85","ZHfunctions::sel_btag(0.85)(jets_R5_isB)")
-        # df = df.Define("bjets_R5_WPp9","ZHfunctions::sel_btag(0.9)(jets_R5_isB)")
+        # ADD BACK IN TO COLLECTIONS
+        df = df.Define("bjets_R5_WPp5","ZHfunctions::sel_btag(0.5)(jets_R5_isB)")
+        df = df.Define("bjets_R5_WPp8","ZHfunctions::sel_btag(0.8)(jets_R5_isB)")
+        df = df.Define("bjets_R5_WPp85","ZHfunctions::sel_btag(0.85)(jets_R5_isB)")
+        df = df.Define("bjets_R5_WPp9","ZHfunctions::sel_btag(0.9)(jets_R5_isB)")
 
-        # df = df.Define("nbjets_R5_WPp5","bjets_R5_WPp5.size()")
-        # df = df.Define("nbjets_R5_WPp8","bjets_R5_WPp8.size()")
-        # df = df.Define("nbjets_R5_WPp85","bjets_R5_WPp85.size()")
-        # df = df.Define("nbjets_R5_WPp9","bjets_R5_WPp9.size()")
+        df = df.Define("nbjets_R5_WPp5","bjets_R5_WPp5.size()")
+        df = df.Define("nbjets_R5_WPp8","bjets_R5_WPp8.size()")
+        df = df.Define("nbjets_R5_WPp85","bjets_R5_WPp85.size()")
+        df = df.Define("nbjets_R5_WPp9","bjets_R5_WPp9.size()")
 
         
         #['recojet_isG_R5', 'recojet_isU_R5', 'recojet_isS_R5', 'recojet_isC_R5', 'recojet_isB_R5', 'recojet_isTAU_R5', 'recojet_isD_R5', 'jet_nmu_R5', 'jet_nel_R5', 'jet_nchad_R5', 'jet_ngamma_R5', 'jet_nnhad_R5']
@@ -707,23 +828,23 @@ class RDFanalysis:
             df = df.Define("nbjets_WPp85", "bjets_WPp85.size()")
             df = df.Define("nbjets_WPp9", "bjets_WPp9.size()")
     
-            df = df.Define("jet1", "jets_p4[0]")
-            df = df.Define("jet2", "jets_p4[1]")
-            df = df.Define("jet3", "jets_p4[2]")
-            df = df.Define("jet4", "jets_p4[3]")
-            df = df.Define("jet1_p","jet1.P()")
-            df = df.Define("jet2_p","jet2.P()")
-            df = df.Define("jet3_p","jet3.P()")
-            df = df.Define("jet4_p","jet4.P()")
-            df = df.Define("jet5_p","jets_p4.size()>4 ? jets_p4[4].P() : -999")
-            df = df.Define("jet6_p","jets_p4.size()>5 ? jets_p4[5].P() : -999")
+            # df = df.Define("jet1", "jets_p4[0]")
+            # df = df.Define("jet2", "jets_p4[1]")
+            # df = df.Define("jet3", "jets_p4[2]")
+            # df = df.Define("jet4", "jets_p4[3]")
+            # df = df.Define("jet1_p","jet1.P()")
+            # df = df.Define("jet2_p","jet2.P()")
+            # df = df.Define("jet3_p","jet3.P()")
+            # df = df.Define("jet4_p","jet4.P()")
+            # df = df.Define("jet5_p","jets_p4.size()>4 ? jets_p4[4].P() : -999")
+            # df = df.Define("jet6_p","jets_p4.size()>5 ? jets_p4[5].P() : -999")
             df = df.Define("recojet_theta", "JetClusteringUtils::get_theta(jet)")
-            df = df.Define("jet1_theta","recojet_theta[0]")
-            df = df.Define("jet2_theta","recojet_theta[1]")
-            df = df.Define("jet3_theta","recojet_theta[2]")
-            df = df.Define("jet4_theta","recojet_theta[3]")
-            df = df.Define("jet5_theta","jets_p4.size()>4 ? recojet_theta[4] : -999")
-            df = df.Define("jet6_theta","jets_p4.size()>5 ? recojet_theta[5] : -999")
+            # df = df.Define("jet1_theta","recojet_theta[0]")
+            # df = df.Define("jet2_theta","recojet_theta[1]")
+            # df = df.Define("jet3_theta","recojet_theta[2]")
+            # df = df.Define("jet4_theta","recojet_theta[3]")
+            # df = df.Define("jet5_theta","jets_p4.size()>4 ? recojet_theta[4] : -999")
+            # df = df.Define("jet6_theta","jets_p4.size()>5 ? recojet_theta[5] : -999")
             
             df = df.Define("jet1_isTau","recojet_isTAU[0]")
             df = df.Define("jet2_isTau","recojet_isTAU[1]")

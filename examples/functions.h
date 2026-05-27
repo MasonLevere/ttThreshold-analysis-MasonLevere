@@ -281,8 +281,21 @@ float get_cosTheta_miss(Vec_rp met){
     return costheta;
 }
 
- 
- 
+
+ROOT::VecOps::RVec<edm4hep::MCParticleData>
+get_mc(ROOT::VecOps::RVec<int> indexes,
+    ROOT::VecOps::RVec<edm4hep::MCParticleData> inParticles) {
+  ROOT::VecOps::RVec<edm4hep::MCParticleData> result;
+
+  for (const auto &index : indexes) {
+    if (index > -1)
+      result.push_back(inParticles.at(index));
+  }
+
+  return result;
+}
+
+
 
 }}
 
