@@ -27,9 +27,7 @@ all_processes = {
 #     "wzp6_ee_WbWb_ecm340": {
 #         "fraction": 1,
 #     },
-##################
-# UNCOMMENT THIS ONE TO GET SECOND FILE
-##################
+
     #"wzp6_ee_WbWb_ecm345": {
     #    "fraction": 1,
     #},
@@ -43,9 +41,36 @@ all_processes = {
 #    "wzp6_ee_WbWb_ecm365": {
 #        "fraction": 1,
 #    },
-    "p8_ee_WW_ecm345": {
+
+#################################
+#  PROCESS TESTED ON PREVIOUSLY
+#
+#    "p8_ee_WW_ecm345": {
+#        "fraction": 1,
+#    },
+#
+#################################
+################################
+# EXCLUSIVE SEMIHADRONIC SAMPLE
+    # "wzp6_ee_munumuqq_noCut_ecm163": {
+    #     "fraction": 1,
+    # },
+################################
+
+# One on shell, one off shell WW events
+    "p8_ee_WW_ecm160": {
         "fraction": 1,
     },
+
+#    "p8_ee_WW_noBES_ecm163": {
+#        "fraction" : 1,
+#    }
+
+#    "p8_ee_WW_ecm125": {
+#        "fraction": 1,
+#    },
+
+
 #    "p8_ee_WW_ecm365": {
 #         "fraction": 1,
 #    },    
@@ -216,16 +241,25 @@ all_processes = {
     
 }
 
-available_ecm = ['340','345', '350', '355','365']
+# ### CONDOR ###
+# runBatch = True
+# batchQueue = "espresso"
+# compGroup = "group_u_FCC.local_gen"
+
+
+
+
+available_ecm = ['125', '160', '163', '340','345', '350', '355','365']
 
 hadronic  = False
 #semihad  = False
 #lep      = False
-ecm       = 345
+ecm       = 160
 print(ecm)
 
 saveExclJets = False
 
+### commented out since using new sample
 if not str(ecm) in available_ecm:
     raise ValueError("ecm value not in available_ecm")
 
@@ -240,7 +274,9 @@ processList={key: value for key, value in all_processes.items() if str(ecm) in a
 
 print(processList)
 # Production tag when running over EDM4Hep centrally produced events, this points to the yaml files for getting sample statistics (mandatory)
-prodTag     = "FCCee/winter2023/IDEA/"
+#prodTag     = "FCCee/winter2023/IDEA/"
+
+inputDir    = "localSamples/"
 
 #Optional: output directory, default is local running directoryp
 outputDir   = "outputs/treemaker/WbWb/{}".format(channel)
@@ -254,6 +290,11 @@ model_name = "fccee_flavtagging_edm4hep_wc" #"fccee_flavtagging_edm4hep_wc_v1"
 
 ## model files locally stored on /eos
 eos_dir ="/eos/experiment/fcc/ee/generation/DelphesEvents/winter2023/IDEA/"
+# new model file directory
+
+
+### CHANGE DIRECTORY
+
 model_dir = (
     "/eos/experiment/fcc/ee/jet_flavour_tagging/winter2023/wc_pt_7classes_12_04_2023/"    # "/eos/experiment/fcc/ee/jet_flavour_tagging/winter2023/wc_pt_13_01_2022/"
 )
@@ -282,7 +323,7 @@ def get_files(eos_dir, proc):
 weaver_preproc = get_file_path(url_preproc, local_preproc)
 weaver_model = get_file_path(url_model, local_model)
 
-#inputDir = eos_dir
+
 
 from addons.ONNXRuntime.jetFlavourHelper import JetFlavourHelper
 from addons.FastJet.jetClusteringHelper import (
@@ -335,8 +376,8 @@ all_branches = [
     "bjets_R5_WPp5", "bjets_R5_WPp8", "bjets_R5_WPp85", "bjets_R5_WPp9",
     "nbjets_R5_WPp5", "nbjets_R5_WPp8", "nbjets_R5_WPp85", "nbjets_R5_WPp9",
     "recojet_isG_R5", "recojet_isU_R5", "recojet_isB_R5", "recojet_isS_R5", 
-    "recojet_isC_R5", "recojet_isD_R5", "recojet_isTAU_R5", 
-    "HardWs_all",
+    "recojet_isC_R5", "recojet_isD_R5", "recojet_isTAU_R5",
+    "Ws_all", "HardWs_all",
 
     ] + w_hadron_decay_names + w_lepton_decay_names
 
