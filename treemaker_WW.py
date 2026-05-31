@@ -4,43 +4,6 @@ from itertools import combinations
 
 # list of processes
 all_processes = {
-#    "p8_ee_ZZ_ecm365":{ "fraction": 1,},
-#    "p8_ee_ZZ_ecm345":{ "fraction": 1,},
-#    "p8_ee_ZZ_ecm340":{ "fraction": 1,},
-#    "wzp6_ee_qq_PSdown_ecm340" :{ "fraction": 1,},
-#    "wzp6_ee_qq_PSup_ecm345":{ "fraction": 1,},
-#    "wzp6_ee_qq_PSdown_ecm345":{ "fraction": 1,},
-#    "wzp6_ee_qq_PSup_ecm365":{ "fraction": 1,},
-#    "wzp6_ee_qq_PSdown_ecm365":{ "fraction": 1,},
-#    "wzp6_ee_qq_PSup_ecm340":{ "fraction": 1,},
-#    
-#    "wzp6_ee_WWZ_Zbb_ecm340": {
-#        "fraction": 1,
-#     },
-#    "wzp6_ee_WWZ_Zbb_ecm345": {
-#        "fraction": 1,
-#     },
-#    "wzp6_ee_WWZ_Zbb_ecm365": {
-#        "fraction": 1,
-#     },
-
-#     "wzp6_ee_WbWb_ecm340": {
-#         "fraction": 1,
-#     },
-
-    #"wzp6_ee_WbWb_ecm345": {
-    #    "fraction": 1,
-    #},
-#    "wzp6_ee_WbWb_ecm350": {
-#        "fraction": 1,
-#    },
-#    "wzp6_ee_WbWb_ecm355": {
-#        "fraction": 1,
-#    },
-#
-#    "wzp6_ee_WbWb_ecm365": {
-#        "fraction": 1,
-#    },
 
 #################################
 #  PROCESS TESTED ON PREVIOUSLY
@@ -62,83 +25,14 @@ all_processes = {
         "fraction": 1,
     },
 
-#    "p8_ee_WW_noBES_ecm163": {
-#        "fraction" : 1,
-#    }
-
-#    "p8_ee_WW_ecm125": {
-#        "fraction": 1,
-#    },
-
-
-#    "p8_ee_WW_ecm365": {
-#         "fraction": 1,
-#    },    
-#    "p8_ee_WW_ecm350": {
-#       "fraction": 1,
-#    },
-#    "p8_ee_WW_ecm340": {
-#       "fraction": 1,
-#    },
-#     "p8_ee_WW_ecm355": {
-#        "fraction": 1,
-#     },
-#
-#    "wzp6_ee_WbWb_PSup_ecm345":{
-#        "fraction": 1,
-#    },
-#    "wzp6_ee_WbWb_PSdown_ecm340":{
-#        "fraction": 1,
-#    },
-#    "wzp6_ee_WbWb_PSdown_ecm345":{
-#        "fraction": 1,
-#    },
-#    "wzp6_ee_WbWb_PSup_ecm365":{
-#        "fraction": 1,
-#    },
-#    "wzp6_ee_WbWb_PSdown_ecm365":{
-#        "fraction": 1,
-#    },
-#    "wzp6_ee_WbWb_PSup_ecm340":{
-#        "fraction": 1,
-#    },
-#    "wzp6_ee_WbWb_mtop171p5_ecm345":{
-#        "fraction": 1,
-#    },
-#    "wzp6_ee_WbWb_mtop171p5_ecm340":{
-#        "fraction": 1,
-#    },
-#    "wzp6_ee_WbWb_mtop173p5_ecm345":{
-#        "fraction": 1,
-#    },
-#    "wzp6_ee_WbWb_mtop171p5_ecm365":{
-#        "fraction": 1,
-#    },
-#    "wzp6_ee_WbWb_mtop173p5_ecm340":{
-#        "fraction": 1,
-#    },
-#    "wzp6_ee_WbWb_mtop173p5_ecm365":{
-#        "fraction": 1,
-#    },
-#    "wzp6_ee_qq_ecm365":{
-#       "fraction": 1,
-#    },    
-#    "wzp6_ee_qq_ecm345": {
-#       "fraction": 1,
-#    },
-#    "wzp6_ee_qq_ecm340": {
-#        "fraction": 1,
-#    },
-#
-#
-###FOR foll WW background samples with PS variations xsec values are wrong in the database!! 
+###FOR foll WW background samples with PS variations xsec values are wrong in the database!!
 #   "p8_ee_WW_PSdown_ecm340":{ "fraction": 1,},
 #   "p8_ee_WW_PSup_ecm340":{ "fraction": 1,},
 #   "p8_ee_WW_PSdown_ecm345":{ "fraction": 1,},
 #   "p8_ee_WW_PSup_ecm345":{ "fraction": 1,},
 #   "p8_ee_WW_PSdown_ecm365":{ "fraction": 1,},
 #   "p8_ee_WW_PSup_ecm365":{ "fraction": 1,},
-    
+
 ###### following samples we don't use
 ##am     "wzp6_ee_WbWb_semihad_ecm345": {
 ##am         "fraction": 1,
@@ -186,59 +80,6 @@ all_processes = {
 ##am         "fraction": 1,
 ##am    },
 
-##     "wzp6_ee_WbWb_had_ecm345": {
-##         "fraction": 1,
-##     },
-##    "wzp6_ee_WbWb_semihad_ecm350": {
-##       "fraction": 1,
-##    },
-##    "wzp6_ee_WbWb_had_ecm350": {
-##       "fraction": 1,
-##    },
-##    "wzp6_ee_WbWb_semihad_ecm355": {
-##        "fraction": 1,
-##    },
-##    "wzp6_ee_WbWb_had_ecm355": {
-##        "fraction": 1,
-##    },
-##    "wzp6_ee_WbWb_semihad_ecm340": {
-##        "fraction": 1,
-##    },
-##    "wzp6_ee_WbWb_had_ecm340": {
-##        "fraction": 1,
-##    },
-##
-##    "wzp6_ee_WbWb_lep_ecm340": {
-##     "fraction": 1,
-##     },
-##    "wzp6_ee_WbWb_lep_ecm345": {
-##             "fraction": 1,
-##     },
-##    "wzp6_ee_WbWb_lep_ecm350": {
-##     "fraction": 1,
-##     },
-##    "wzp6_ee_WbWb_lep_ecm355": {
-##             "fraction": 1,
-##     },
-    #"wzp6_ee_WbWb_lep_ecm365": {
-    #     "fraction": 1,
-    # },
-    #"wzp6_ee_WbWb_semihad_ecm365": {
-    #    "fraction": 1,
-    # },
-    #"wzp6_ee_WbWb_had_ecm365": {
-    #     "fraction": 1,
-    #},
-    #"wzp6_ee_WbWb_semihad_mtop173p5_ecm365": {
-    #     "fraction": 1,
-    #},
-    #
-    #"wzp6_ee_WbWb_semihad_mtop171p5_ecm365": {
-    #     "fraction": 1,
-    #},
-
-
-    
 }
 
 # ### CONDOR ###
@@ -276,10 +117,10 @@ print(processList)
 # Production tag when running over EDM4Hep centrally produced events, this points to the yaml files for getting sample statistics (mandatory)
 #prodTag     = "FCCee/winter2023/IDEA/"
 
-inputDir    = "localSamples/"
+inputDir    = "/eos/user/m/mlevere/ttThreshold-analysis/localSamples/"
 
 #Optional: output directory, default is local running directoryp
-outputDir   = "outputs/treemaker/WbWb/{}".format(channel)
+outputDir   = "/eos/user/m/mlevere/ttThreshold-analysis/outputs/treemaker/WbWb/{}_WW".format(channel)
 
 
 # additional/costom C++ functions, defined in header files (optional)
@@ -356,14 +197,23 @@ lepton_pdg = {
 
 
 w_hadron_decay_names = []
+w_hadron_decay_tlv_names = []
 for (q1, id1), (q2, id2) in combinations(quark_pdg.items(), 2):
-    w_hadron_decay_names.append(f"Wplus_to_{q1}_{q2}")
-    w_hadron_decay_names.append(f"Wminus_to_{q1}_{q2}")
+    w_hadron_decay_names.append(f"W_on_shell_to_{q1}_{q2}_idxs")
+    w_hadron_decay_names.append(f"W_off_shell_to_{q1}_{q2}_idxs")
+    w_hadron_decay_names.append(f"W_on_shell_to_{q1}_{q2}_objs")
+    w_hadron_decay_names.append(f"W_off_shell_to_{q1}_{q2}_objs")
+    w_hadron_decay_names.append(f"Mass_{q1}_{q2}_pairs")
+    w_hadron_decay_tlv_names.append(f"W_on_shell_to_{q1}_{q2}_tlv")
+    w_hadron_decay_tlv_names.append(f"W_off_shell_to_{q1}_{q2}_tlv")
 
 w_lepton_decay_names = []
+w_lepton_decay_tlv_names = []
 for lep in lepton_pdg.keys():
-    w_lepton_decay_names.append(f"Wplus_to_{lep}_nu")
-    w_lepton_decay_names.append(f"Wminus_to_{lep}_nu")
+    w_lepton_decay_names.append(f"W_on_shell_to_{lep}_nu")
+    w_lepton_decay_names.append(f"W_off_shell_to_{lep}_nu")
+    w_lepton_decay_tlv_names.append(f"W_on_shell_to_{lep}_nu_tlv")
+    w_lepton_decay_tlv_names.append(f"W_off_shell_to_{lep}_nu_tlv")
 
 
 all_branches = [
@@ -377,9 +227,18 @@ all_branches = [
     "nbjets_R5_WPp5", "nbjets_R5_WPp8", "nbjets_R5_WPp85", "nbjets_R5_WPp9",
     "recojet_isG_R5", "recojet_isU_R5", "recojet_isB_R5", "recojet_isS_R5", 
     "recojet_isC_R5", "recojet_isD_R5", "recojet_isTAU_R5",
-    "Ws_all", "HardWs_all",
+    "Ws_all", "HardWs_all","HardWs_all_mass", "HardWs_all_energy", "HardWs_all_p",
+    "W_on_shell_idx", "W_off_shell_idx",
+    "on_shell_quark_idxs", "off_shell_quark_idxs", "All_W_quarks_idx",
+    "on_shell_quark_objs", "off_shell_quark_objs",
+    "Mass_qq_pairs",
+    "Candidate_on_shell_W_qq_p_idxs", "Candidate_off_shell_W_qq_p_idxs",
+    "Candidate_on_shell_W_qq_p_flavor", "Candidate_off_shell_W_qq_p_flavor",
+    "Candidate_on_shell_W_qq_mass", "Candidate_off_shell_W_qq_mass",
+    "W_qq_match_truth",
 
-    ] + w_hadron_decay_names + w_lepton_decay_names
+
+    ] + w_hadron_decay_names + w_lepton_decay_names #+ w_hadron_decay_tlv_names + w_lepton_decay_tlv_names
 
 
 
@@ -443,15 +302,15 @@ class RDFanalysis:
             "FCCAnalyses::ZHfunctions::sel_iso(0.25)(electrons_sel, electrons_iso)",
         )
 
-        if channel == "had":
-            #hadronic=True
-            df = df.Filter("muons_sel_iso.size() + electrons_sel_iso.size() == 0")
-        elif  channel == "semihad":
-            #semihad=True
-            df = df.Filter("muons_sel_iso.size() + electrons_sel_iso.size() == 1")
-        elif channel == "leptonic":
-            #lep=True
-            df = df.Filter("muons_sel_iso.size() + electrons_sel_iso.size() == 2")
+        # if channel == "had":
+        #     #hadronic=True
+        #     df = df.Filter("muons_sel_iso.size() + electrons_sel_iso.size() == 0")
+        # elif  channel == "semihad":
+        #     #semihad=True
+        #     df = df.Filter("muons_sel_iso.size() + electrons_sel_iso.size() == 1")
+        # elif channel == "leptonic":
+        #     #lep=True
+        #     df = df.Filter("muons_sel_iso.size() + electrons_sel_iso.size() == 2")
 
         # uncomment to restore channel seperating
         # if not (channel == "had"):
@@ -548,6 +407,34 @@ class RDFanalysis:
 
         )
 
+        df = df.Filter("HardWs_all.size() == 2", "exactly 2 hard Ws")
+
+        df = df.Define(
+            "HardWs_all_mass",
+            "FCCAnalyses::MCParticle::get_mass(HardWs_all)"
+        )
+
+
+        df = df.Define(
+            "HardWs_all_energy",
+            "FCCAnalyses::MCParticle::get_e(HardWs_all)"
+        )
+
+        df = df.Define(
+            "HardWs_all_p",
+            "FCCAnalyses::MCParticle::get_p(HardWs_all)"
+        )
+
+
+        # peak center and width
+        df = df.Define(
+            "Ws_on_and_off_shell",
+            "FCCAnalyses::ZHfunctions::get_on_and_off_shell_WW_160ecm(HardWs_all, Particle, 80.4, 2.1)"
+        )
+
+        df = df.Define("W_on_shell_idx",  "Ws_on_and_off_shell.high_mass_idx")
+        df = df.Define("W_off_shell_idx", "Ws_on_and_off_shell.low_mass_idx")
+
          # quark_pdg = {
         #     'd': 1,
         #     'u': 2,
@@ -556,10 +443,23 @@ class RDFanalysis:
         #     'b': 5,
         #     't': 6,
         # }
-        
-    
+
+
         # loop over all quarks pair decays from W and saves the events by object to "W_to{q1}{q2}"
+
+        # start writing my python code to treemaker instead
+
         df = df.Alias("DaughterIndex", "Particle#1.index")
+
+        # there are multiple copies of the W, and we look for the Ws with only status 22, but these copies
+        # are not where the daughters are always stored
+        # the daughters of status-22 can be other ws objects used in pythia8 that reference the same w,
+        # some of which may store the quark daughters, thus we have to have a function that looks for the w with quark daughters
+        
+        df = df.Define("W_on_shell_decay_idx",
+            "FCCAnalyses::ZHfunctions::get_decaying_W_idx(W_on_shell_idx, Particle, DaughterIndex)")
+        df = df.Define("W_off_shell_decay_idx",
+            "FCCAnalyses::ZHfunctions::get_decaying_W_idx(W_off_shell_idx, Particle, DaughterIndex)")
 
         dup_tracker = []
 
@@ -572,85 +472,164 @@ class RDFanalysis:
                 if q2 in dup_tracker:
                     continue
 
-                # find daughter indexs of wplus and wminus seperately
+
+                # goes from w idxs to w and q idxs to w and q particle objects
                 df = df.Define(
-                    f"Wplus_to_{q1}_{q2}_sel",
-                    f"FCCAnalyses::MCParticle::get_indices(24, {{{id1}, {id2}}}, false, false, true, false)(Particle, DaughterIndex)"
+                    f"W_on_shell_to_{q1}_{q2}_idxs",
+                    f"FCCAnalyses::MCParticle::get_indices_MotherByIndex(W_on_shell_decay_idx, {{{id1},{id2}}}, false, true, true, Particle, DaughterIndex)"
                 )
 
                 df = df.Define(
-                    f"Wminus_to_{q1}_{q2}_sel",
-                    f"FCCAnalyses::MCParticle::get_indices(-24, {{{id1}, {id2}}}, false, false, true, false)(Particle, DaughterIndex)"
+                    f"W_off_shell_to_{q1}_{q2}_idxs",
+                    f"FCCAnalyses::MCParticle::get_indices_MotherByIndex(W_off_shell_decay_idx, {{{id1},{id2}}}, false, true, true, Particle, DaughterIndex)"
                 )
 
-                # get objects from indexs
-                df = df.Define(
-                    f"Wplus_to_{q1}_{q2}",
-                    f"FCCAnalyses::ZHfunctions::get_mc(Wplus_to_{q1}_{q2}_sel, Particle)"
-                )
 
+                # [W, q1, q2] as MCParticleData objects — truth data
                 df = df.Define(
-                    f"Wminus_to_{q1}_{q2}",
-                    f"FCCAnalyses::ZHfunctions::get_mc(Wminus_to_{q1}_{q2}_sel, Particle)"
+                    f"W_on_shell_to_{q1}_{q2}_objs",
+                    f"W_on_shell_to_{q1}_{q2}_idxs.size() > 0 ? "
+                    f"FCCAnalyses::ZHfunctions::get_mc(W_on_shell_to_{q1}_{q2}_idxs, Particle) : "
+                    f"ROOT::VecOps::RVec<edm4hep::MCParticleData>{{}}"
                 )
-
-                # final output for smaller tree
                 df = df.Define(
-                    f"Wplus_to_{q1}_{q2}_n",
-                    f"FCCAnalyses::MCParticle::get_n(Wplus_to_{q1}_{q2})"
+                    f"W_off_shell_to_{q1}_{q2}_objs",
+                    f"W_off_shell_to_{q1}_{q2}_idxs.size() > 0 ? "
+                    f"FCCAnalyses::ZHfunctions::get_mc(W_off_shell_to_{q1}_{q2}_idxs, Particle) : "
+                    f"ROOT::VecOps::RVec<edm4hep::MCParticleData>{{}}"
                 )
 
                 df = df.Define(
-                    f"Wminus_to_{q1}_{q2}_n",
-                    f"FCCAnalyses::MCParticle::get_n(Wminus_to_{q1}_{q2})"
+                    f"W_on_shell_to_{q1}_{q2}_quarks_idxs",
+                    f"W_on_shell_to_{q1}_{q2}_idxs.size() > 2 ? "
+                    f"ROOT::VecOps::Take(W_on_shell_to_{q1}_{q2}_idxs, {{1, 2}}) : "
+                    f"ROOT::VecOps::RVec<int>{{}}"
                 )
+
+                df = df.Define(
+                    f"W_off_shell_to_{q1}_{q2}_quarks_idxs",
+                    f"W_off_shell_to_{q1}_{q2}_idxs.size() > 2 ? "
+                    f"ROOT::VecOps::Take(W_off_shell_to_{q1}_{q2}_idxs, {{1, 2}}) : "
+                    f"ROOT::VecOps::RVec<int>{{}}"
+                )
+
+                df = df.Define(
+                    f"All_W_quarks_to_{q1}_{q2}_idx",
+                    f"(W_on_shell_to_{q1}_{q2}_idxs.size() > 2) && (W_off_shell_to_{q1}_{q2}_idxs.size() > 2) ? "
+                    f"ROOT::VecOps::Concatenate(W_on_shell_to_{q1}_{q2}_quarks_idxs, W_off_shell_to_{q1}_{q2}_quarks_idxs) : "
+                    f"ROOT::VecOps::RVec<int>{{}}"
+                )
+
+                # here down
+
+                df = df.Define(
+                    f"All_W_quarks_to_{q1}_{q2}_pairs_idx",
+                    f"(All_W_quarks_to_{q1}_{q2}_idx.size() == 4) ? "
+                    f"ROOT::VecOps::Combinations(All_W_quarks_to_{q1}_{q2}_idx, 2) : "
+                    f"ROOT::VecOps::RVec<ROOT::VecOps::RVec<size_t>>{{}}"
+                )
+
+                df = df.Define(
+                    f"Mass_{q1}_{q2}_pairs",
+                    f"(All_W_quarks_to_{q1}_{q2}_pairs_idx.size() >= 2) ? "
+                    f"FCCAnalyses::ZHfunctions::get_pair_masses(All_W_quarks_to_{q1}_{q2}_idx, All_W_quarks_to_{q1}_{q2}_pairs_idx, Particle) : "
+                    f"ROOT::VecOps::RVec<double>{{}}"
+                )
+
+                df = df.Define(
+                    f"Candidate_On_Shell_W_{q1}_{q2}_pairs",
+                    f"(Mass_{q1}_{q2}_pairs.size() == 6) ? "
+                    f"FCCAnalyses::ZHfunctions::compare_pair_mass_to_w(Mass_{q1}_{q2}_pairs, All_W_quarks_to_{q1}_{q2}_idx, All_W_quarks_to_{q1}_{q2}_pairs_idx, Particle, W_on_shell_decay_idx) : "
+                    f"FCCAnalyses::ZHfunctions::OnOffidx{{}}"
+                )
+
+                df = df.Define(f"W_on_shell_qq_p_idxs_{q1}_{q2}",  f"Candidate_On_Shell_W_{q1}_{q2}_pairs.on_shell_idx")
+                df = df.Define(f"W_off_shell_qq_p_idxs_{q1}_{q2}", f"Candidate_On_Shell_W_{q1}_{q2}_pairs.off_shell_idx")
+
+                
+
+
+        ##### now want to define the two pairs invariant mass as well as if they are the true match
+
+        on_shell_had  = " || ".join(f"W_on_shell_to_{q1}_{q2}_quarks_idxs.size() > 0"  for (q1, _), (q2, _) in combinations(quark_pdg.items(), 2))
+        off_shell_had = " || ".join(f"W_off_shell_to_{q1}_{q2}_quarks_idxs.size() > 0" for (q1, _), (q2, _) in combinations(quark_pdg.items(), 2))
+        df = df.Filter(f"({on_shell_had}) && ({off_shell_had})", "fully hadronic")
+
+
+        # now we combine on and off shells quarks per event, 
+        # so we filter across all names for the non-empty qq channel and combine
+
+        channel_list = [(q1, q2) for (q1,_),(q2,_) in combinations(quark_pdg.items(), 2)]
+
+        on_expr = "ROOT::VecOps::RVec<int>{}"
+        for q1, q2 in reversed(channel_list):
+            on_expr = f"(W_on_shell_to_{q1}_{q2}_quarks_idxs.size() > 0 ? W_on_shell_to_{q1}_{q2}_quarks_idxs : {on_expr})"
+
+        off_expr = "ROOT::VecOps::RVec<int>{}"
+        for q1, q2 in reversed(channel_list):
+            off_expr = f"(W_off_shell_to_{q1}_{q2}_quarks_idxs.size() > 0 ? W_off_shell_to_{q1}_{q2}_quarks_idxs : {off_expr})"
+
+        df = df.Define("on_shell_quark_idxs", on_expr)
+        df = df.Define("off_shell_quark_idxs", off_expr)
+        df = df.Define("All_W_quarks_idx", "ROOT::VecOps::Concatenate(on_shell_quark_idxs, off_shell_quark_idxs)")
+        df = df.Define("on_shell_quark_objs",  "FCCAnalyses::ZHfunctions::get_mc(on_shell_quark_idxs, Particle)")
+        df = df.Define("off_shell_quark_objs", "FCCAnalyses::ZHfunctions::get_mc(off_shell_quark_idxs, Particle)")
+
+        
+        df = df.Define(
+            f"All_W_quarks_pairs_idx",
+            f"(All_W_quarks_idx.size() == 4) ? "
+            f"ROOT::VecOps::Combinations(All_W_quarks_idx, 2) : "
+            f"ROOT::VecOps::RVec<ROOT::VecOps::RVec<size_t>>{{}}"
+        )
+
+        df = df.Define(
+            f"Mass_qq_pairs",
+            f"(All_W_quarks_pairs_idx.size() >= 2) ? "
+            f"FCCAnalyses::ZHfunctions::get_pair_masses(All_W_quarks_idx, All_W_quarks_pairs_idx, Particle) : "
+            f"ROOT::VecOps::RVec<double>{{}}"
+        )
+
+        df = df.Define(
+            f"Candidate_W_qq_pairs",
+            f"(Mass_qq_pairs.size() == 6) ? "
+            f"FCCAnalyses::ZHfunctions::compare_pair_mass_to_w(Mass_qq_pairs, All_W_quarks_idx, All_W_quarks_pairs_idx, Particle, W_on_shell_decay_idx) : "
+            f"FCCAnalyses::ZHfunctions::OnOffidx{{}}"
+        )
+
+        df = df.Define(f"Candidate_on_shell_W_qq_p_idxs",  f"Candidate_W_qq_pairs.on_shell_idx")
+        df = df.Define(f"Candidate_off_shell_W_qq_p_idxs", f"Candidate_W_qq_pairs.off_shell_idx")
+        df = df.Define(f"Candidate_on_shell_W_qq_mass", f"Candidate_W_qq_pairs.on_shell_mass")
+        df = df.Define(f"Candidate_off_shell_W_qq_mass", f"Candidate_W_qq_pairs.off_shell_mass")
+        df = df.Define(f"Candidate_on_shell_W_qq_p_flavor", f"Candidate_W_qq_pairs.on_shell_flavor")
+        df = df.Define(f"Candidate_off_shell_W_qq_p_flavor", f"Candidate_W_qq_pairs.off_shell_flavor")
+
+        df = df.Define(f"W_qq_match_truth", f"Candidate_W_qq_pairs.match_truth")
+
 
         for lep, ids in lepton_pdg.items():
             lep_id, nu_id = ids
 
             df = df.Define(
-                    f"Wplus_to_{lep}_nu_sel",
-                    f"FCCAnalyses::MCParticle::get_indices(24, {{{lep_id}, {nu_id}}}, false, false, true, false)(Particle, DaughterIndex)"
+                    f"W_on_shell_to_{lep}_nu",
+                    f"FCCAnalyses::ZHfunctions::get_mc(FCCAnalyses::MCParticle::get_indices_MotherByIndex(W_on_shell_idx, {{{lep_id},{nu_id}}}, false, true, false, Particle, DaughterIndex), Particle)"
                 )
 
             df = df.Define(
-                    f"Wminus_to_{lep}_nu_sel",
-                    f"FCCAnalyses::MCParticle::get_indices(-24, {{{lep_id}, {nu_id}}}, false, false, true, false)(Particle, DaughterIndex)"
+                    f"W_off_shell_to_{lep}_nu",
+                    f"FCCAnalyses::ZHfunctions::get_mc(FCCAnalyses::MCParticle::get_indices_MotherByIndex(W_off_shell_idx, {{{lep_id},{nu_id}}}, false, true, false, Particle, DaughterIndex), Particle)"
                 )
 
             df = df.Define(
-                    f"Wplus_to_{lep}_nu",
-                    f"FCCAnalyses::ZHfunctions::get_mc(Wplus_to_{lep}_nu_sel, Particle)"
+                    f"W_on_shell_to_{lep}_nu_tlv",
+                    f"FCCAnalyses::MCParticle::get_tlv(W_on_shell_to_{lep}_nu)"
                 )
 
             df = df.Define(
-                    f"Wminus_to_{lep}_nu",
-                    f"FCCAnalyses::ZHfunctions::get_mc(Wminus_to_{lep}_nu_sel, Particle)"
+                    f"W_off_shell_to_{lep}_nu_tlv",
+                    f"FCCAnalyses::MCParticle::get_tlv(W_off_shell_to_{lep}_nu)"
                 )
 
-            df = df.Define(
-                    f"Wplus_to_{lep}_nu_n",
-                    f"FCCAnalyses::MCParticle::get_n(Wplus_to_{lep}_nu)"
-                )
-
-            df = df.Define(
-                    f"Wminus_to_{lep}_nu_n",
-                    f"FCCAnalyses::MCParticle::get_n(Wminus_to_{lep}_nu)"
-                )
-
-
-        # ReconstructedParticle::get(Electron0, ReconstructedParticles)
-
-        # )
-
-        # df = df.Define(
-        #     "WDaughters",
-        #     "FCCAnalyses::MCParticle::get_list_of_particles_from_decay()"
-        # )
-
-
-
-        # we only want hard-Ws, PDG=24 and generator status=22
 
 
 
@@ -806,8 +785,8 @@ class RDFanalysis:
 
         df = df.Define("bjets_R5_true",  "JetConstituentsUtils::compute_tlv_jets({})". format('jets_R5_btagged_true'))
         df = df.Define("ljets_R5_true",  "JetConstituentsUtils::compute_tlv_jets({})". format('jets_R5_ltagged_true'))
-        df = df.Define("bjet1_R5_true_p","nbjets_R5_true > 1 ? bjets_R5_true[0].P() : -999")
-        df = df.Define("ljet1_R5_true_p","nljets_R5_true > 1 ? ljets_R5_true[0].P() : -999")
+        df = df.Define("bjet1_R5_true_p","nbjets_R5_true > 0 ? bjets_R5_true[0].P() : -999")
+        df = df.Define("ljet1_R5_true_p","nljets_R5_true > 0 ? ljets_R5_true[0].P() : -999")
 
         
 

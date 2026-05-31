@@ -295,6 +295,186 @@ get_mc(ROOT::VecOps::RVec<int> indexes,
   return result;
 }
 
+
+struct TwoParticleGroups {
+    int high_mass_idx = -1;
+    int low_mass_idx  = -1;
+};
+
+// given 2 hard W objects and the full Particle collection, return the indices
+// (in Particle) of the on-shell (higher mass) and off-shell (lower mass) W
+TwoParticleGroups
+get_on_and_off_shell_WW_160ecm(ROOT::VecOps::RVec<edm4hep::MCParticleData> hard_ws,
+    ROOT::VecOps::RVec<edm4hep::MCParticleData> all_particles,
+    double mass_threshold,
+    double mass_width)
+{
+    const auto& first  = hard_ws[0];
+    const auto& second = hard_ws[1];
+    const auto& on_shell  = (first.mass >= second.mass) ? first : second;
+    const auto& off_shell = (first.mass >= second.mass) ? second : first;
+
+    TwoParticleGroups result;
+    for (int i = 0; i < (int)all_particles.size(); i++) {
+        const auto& p = all_particles[i];
+        bool match = (p.PDG == on_shell.PDG &&
+                      p.momentum.x == on_shell.momentum.x &&
+                      p.momentum.y == on_shell.momentum.y &&
+                      p.momentum.z == on_shell.momentum.z);
+        if (match && result.high_mass_idx < 0) { result.high_mass_idx = i; continue; }
+
+        match = (p.PDG == off_shell.PDG &&
+                 p.momentum.x == off_shell.momentum.x &&
+                 p.momentum.y == off_shell.momentum.y &&
+                 p.momentum.z == off_shell.momentum.z);
+        if (match && result.low_mass_idx < 0) result.low_mass_idx = i;
+
+        if (result.high_mass_idx >= 0 && result.low_mass_idx >= 0) break;
+    }
+    return result;
+}
+
+
+
+ROOT::VecOps::RVec<double> get_pair_masses(
+    const ROOT::VecOps::RVec<int>& quark_idxs,
+    const ROOT::VecOps::RVec<ROOT::VecOps::RVec<size_t>>& pairs,
+    const ROOT::VecOps::RVec<edm4hep::MCParticleData>& particles)
+{
+    ROOT::VecOps::RVec<double> masses;
+    for (size_t i = 0; i < pairs[0].size(); i++) {
+        // compute invariant mass of pair i
+
+        const auto& a_pair = pairs[0][i];
+        const auto& b_pair = pairs[1][i];
+
+        int idx_a = quark_idxs[a_pair];
+        int idx_b = quark_idxs[b_pair];
+
+        auto pa = particles[idx_a];
+        auto pb = particles[idx_b];
+
+        // momentum components
+        double px_a = pa.momentum.x;
+        double py_a = pa.momentum.y;
+        double pz_a = pa.momentum.z;
+
+        double px_b = pb.momentum.x;
+        double py_b = pb.momentum.y;
+        double pz_b = pb.momentum.z;
+
+        // energy from E^2 = |p|^2 + m^2
+        double E_a = std::sqrt(px_a*px_a + py_a*py_a + pz_a*pz_a + pa.mass*pa.mass);
+        double E_b = std::sqrt(px_b*px_b + py_b*py_b + pz_b*pz_b + pb.mass*pb.mass);
+
+        double m_pair = std::sqrt(
+            std::max(0.0, (E_a + E_b)*(E_a + E_b)
+                - (px_a + px_b)*(px_a + px_b)
+                - (py_a + py_b)*(py_a + py_b)
+                - (pz_a + pz_b)*(pz_a + pz_b))
+        );
+
+        masses.push_back(m_pair);
+
+    }
+    return masses;
+}
+
+// Walk decay chain from w_idx, following W→W copies, until reaching the W
+// whose daughters are not another W (i.e. the one that actually decays to quarks/leptons).
+int get_decaying_W_idx(int w_idx,
+                       const ROOT::VecOps::RVec<edm4hep::MCParticleData>& particles,
+                       const ROOT::VecOps::RVec<int>& daughter_indices) {
+    if (w_idx < 0) return w_idx;
+    int current = w_idx;
+    for (int depth = 0; depth < 20; depth++) {
+        int dbegin = particles[current].daughters_begin;
+        int dend   = particles[current].daughters_end;
+        int next = -1;
+        for (int d = dbegin; d < dend; d++) {
+            int didx = daughter_indices[d];
+            if (std::abs(particles[didx].PDG) == 24) { next = didx; break; }
+        }
+        if (next < 0) break;
+        current = next;
+    }
+    return current;
+}
+
+// gets the best pair to match to a W and returns their particle indexs
+// in ours, we compare to the on shell W
+
+struct OnOffidx {
+    ROOT::VecOps::RVec<int> on_shell_idx;
+    ROOT::VecOps::RVec<int> off_shell_idx;
+    double on_shell_mass = 0.0;
+    double off_shell_mass = 0.0;
+    ROOT::VecOps::RVec<int> on_shell_flavor;
+    ROOT::VecOps::RVec<int> off_shell_flavor;
+    int match_truth = 0;
+};
+
+// quark_idxs are passed as w_on shell, w_off shell, so the first two indicies should be the on shell, so we do a check
+OnOffidx compare_pair_mass_to_w(
+    const ROOT::VecOps::RVec<double>& masses,
+    const ROOT::VecOps::RVec<int>& quark_idxs,
+    const ROOT::VecOps::RVec<ROOT::VecOps::RVec<size_t>>& pairs,
+    const ROOT::VecOps::RVec<edm4hep::MCParticleData>& particles,
+    int w_idx)
+{
+    double diff = 999999;
+    int best_idx = -1;
+    double w_mass = particles[w_idx].mass;
+    OnOffidx result;
+
+    for (size_t i = 0; i < masses.size(); i++) {
+        double d = std::abs(masses[i] - w_mass);
+        if (d < diff) {
+            diff = d;
+            best_idx = i;
+        }
+    }
+
+    size_t pos1 = pairs[0][best_idx];
+    size_t pos2 = pairs[1][best_idx];
+
+    result.on_shell_idx = ROOT::VecOps::RVec<int>{quark_idxs[pos1], quark_idxs[pos2]};
+    result.on_shell_flavor = ROOT::VecOps::RVec<int>{particles[quark_idxs[pos1]].PDG, particles[quark_idxs[pos2]].PDG};
+    result.on_shell_mass = masses[best_idx];
+
+    // positions 0,1 in quark_idxs are the on-shell W's quarks (Concatenate order)
+    result.match_truth = ((pos1 < 2) && (pos2 < 2)) ? 1 : 0;
+
+
+
+    ROOT::VecOps::RVec<int> off_shell_idx;
+    ROOT::VecOps::RVec<int> off_shell_flavor;
+    for (size_t j = 0; j < quark_idxs.size(); j++) {
+        if (j != pos1 && j != pos2) {
+            off_shell_idx.push_back(quark_idxs[j]);
+            off_shell_flavor.push_back(particles[quark_idxs[j]].PDG);
+        }
+    }
+    result.off_shell_idx    = off_shell_idx;
+    result.off_shell_flavor = off_shell_flavor;
+
+    for (size_t i = 0; i < pairs[0].size(); i++) {
+    if (pairs[0][i] != pos1 && pairs[0][i] != pos2 &&
+        pairs[1][i] != pos1 && pairs[1][i] != pos2) {
+        result.off_shell_mass = masses[i];
+        break;
+        }
+    }
+
+    return result;
+}
+
+
+
+
+
+
+
 // modify get_indices to not just take the first decay found since we are interested in ww process
 
 // get_indices::get_indices_all_occurances( int pdg_mother, std::vector<int> pdg_daughters, bool stableDaughters, bool chargeConjugateMother, bool chargeConjugateDaughters, bool inclusiveDecay) {

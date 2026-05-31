@@ -276,10 +276,10 @@ print(processList)
 # Production tag when running over EDM4Hep centrally produced events, this points to the yaml files for getting sample statistics (mandatory)
 #prodTag     = "FCCee/winter2023/IDEA/"
 
-inputDir    = "localSamples/"
+inputDir    = "/eos/user/m/mlevere/ttThreshold-analysis/localSamples/"
 
 #Optional: output directory, default is local running directoryp
-outputDir   = "outputs/treemaker/WbWb/{}".format(channel)
+outputDir   = "/eos/user/m/mlevere/ttThreshold-analysis/outputs/treemaker/WbWb/{}_reco".format(channel)
 
 
 # additional/costom C++ functions, defined in header files (optional)
@@ -377,7 +377,7 @@ all_branches = [
     "nbjets_R5_WPp5", "nbjets_R5_WPp8", "nbjets_R5_WPp85", "nbjets_R5_WPp9",
     "recojet_isG_R5", "recojet_isU_R5", "recojet_isB_R5", "recojet_isS_R5", 
     "recojet_isC_R5", "recojet_isD_R5", "recojet_isTAU_R5",
-    "Ws_all", "HardWs_all",
+    "Ws_all", "HardWs_all", "HardWs_all_mass",
 
     ] + w_hadron_decay_names + w_lepton_decay_names
 
@@ -545,7 +545,11 @@ class RDFanalysis:
         df = df.Define(
             "HardWs_all",
             "FCCAnalyses::MCParticle::sel_genStatus(22)(Ws_all)"
+        )
 
+        df = df.Define(
+            "HardWs_all_mass",
+            "FCCAnalyses::MCParticle::get_mass(HardWs_all)"
         )
 
          # quark_pdg = {
@@ -637,6 +641,11 @@ class RDFanalysis:
                     f"Wminus_to_{lep}_nu_n",
                     f"FCCAnalyses::MCParticle::get_n(Wminus_to_{lep}_nu)"
                 )
+
+        wplus_had  = " || ".join(f"Wplus_to_{q1}_{q2}_n > 0"  for (q1, _), (q2, _) in combinations(quark_pdg.items(), 2))
+        wminus_had = " || ".join(f"Wminus_to_{q1}_{q2}_n > 0" for (q1, _), (q2, _) in combinations(quark_pdg.items(), 2))
+        df = df.Filter(f"({wplus_had}) && ({wminus_had})", "fully hadronic")
+
 
 
         # ReconstructedParticle::get(Electron0, ReconstructedParticles)

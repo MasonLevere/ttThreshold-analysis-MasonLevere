@@ -33,7 +33,7 @@ else:
 
 # pdgs are dictionaries
 # function gets name of every channel and can split by process or parent or both
-def AccumulateNames(quark_pdg, lepton_pdg, parents=("W_on_shell", "W_off_shell"), separate_by="Parent"):
+def AccumulateNames(quark_pdg, lepton_pdg, parents=("Wplus", "Wminus"), separate_by="Parent"):
 
     decay_names = {p: {"hadron": [], "lepton": []} for p in parents}
 
@@ -152,7 +152,7 @@ def MakeHistFromDict(name_dic, processes_name, save_name="", total=None):
     return()
 
 
-def HSL_cuts(parents=("W_on_shell", "W_off_shell")):
+def HSL_cuts(parents=("Wplus", "Wminus")):
 
     if len(parents) == 2:
         plus_hadron, plus_lepton, minus_hadron, minus_lepton = AccumulateNames(quark_pdg, lepton_pdg, parents=parents, separate_by="Both")
@@ -180,11 +180,11 @@ def HSL_cuts(parents=("W_on_shell", "W_off_shell")):
 
 
 def CKM_estimate(pair='c_b'):
-    HSL_dict_wplus = HSL_cuts(parents=("W_on_shell", ))
-    HSL_dict_wminus = HSL_cuts(parents=("W_off_shell", ))
+    HSL_dict_wplus = HSL_cuts(parents=("Wplus", ))
+    HSL_dict_wminus = HSL_cuts(parents=("Wminus", ))
 
     total_hadronic = HSL_dict_wplus['Hadronic'] + HSL_dict_wminus['Hadronic']
-    total_pair = all_dic[f"W_on_shell_to_{pair}"] + all_dic[f"W_off_shell_to_{pair}"]
+    total_pair = all_dic[f"Wplus_to_{pair}"] + all_dic[f"Wminus_to_{pair}"]
 
     b_pair = total_pair / total_hadronic
 
@@ -235,7 +235,7 @@ lepton_pdg = {
     'tau': (15, 16),
 }
 
-wplus_hadron_decay_names, wplus_lepton_decay_names, wminus_hadron_decay_names, wminus_lepton_decay_names = AccumulateNames(quark_pdg, lepton_pdg, parents=("W_on_shell", "W_off_shell"), separate_by="Both")
+wplus_hadron_decay_names, wplus_lepton_decay_names, wminus_hadron_decay_names, wminus_lepton_decay_names = AccumulateNames(quark_pdg, lepton_pdg, parents=("Wplus", "Wminus"), separate_by="Both")
 
 all_names = wplus_hadron_decay_names + wplus_lepton_decay_names + wminus_hadron_decay_names + wminus_lepton_decay_names
 
@@ -255,24 +255,24 @@ print('nevents', nevents)
 # WplusWminus combined hists
 
 off_diagonals_name_dict = {
-    "ub": ["W_on_shell_to_u_b", "W_off_shell_to_u_b"],
-    "cd": ["W_on_shell_to_d_c", "W_off_shell_to_d_c"],
-    "cb": ["W_on_shell_to_c_b", "W_off_shell_to_c_b"],
-    "us": ["W_on_shell_to_u_s", "W_off_shell_to_u_s"],
-    "td": ["W_on_shell_to_d_t", "W_off_shell_to_d_t"],
-    "ts": ["W_on_shell_to_s_t", "W_off_shell_to_s_t"],
+    "ub": ["Wplus_to_u_b", "Wminus_to_u_b"],
+    "cd": ["Wplus_to_d_c", "Wminus_to_d_c"],
+    "cb": ["Wplus_to_c_b", "Wminus_to_c_b"],
+    "us": ["Wplus_to_u_s", "Wminus_to_u_s"],
+    "td": ["Wplus_to_d_t", "Wminus_to_d_t"],
+    "ts": ["Wplus_to_s_t", "Wminus_to_s_t"],
 }
 
 diagonals_name_dict = {
-    "ud": ["W_on_shell_to_d_u", "W_off_shell_to_d_u"],
-    "cs": ["W_on_shell_to_s_c", "W_off_shell_to_s_c"],
-    "tb": ["W_on_shell_to_b_t", "W_off_shell_to_b_t"],
+    "ud": ["Wplus_to_d_u", "Wminus_to_d_u"],
+    "cs": ["Wplus_to_s_c", "Wminus_to_s_c"],
+    "tb": ["Wplus_to_b_t", "Wminus_to_b_t"],
 }
 
 leptonic_name_dict = {
-    "enu": ["W_on_shell_to_e_nu", "W_off_shell_to_e_nu"],
-    "munu": ["W_on_shell_to_mu_nu", "W_off_shell_to_mu_nu"],
-    "taunu": ["W_on_shell_to_tau_nu", "W_off_shell_to_tau_nu"],
+    "enu": ["Wplus_to_e_nu", "Wminus_to_e_nu"],
+    "munu": ["Wplus_to_mu_nu", "Wminus_to_mu_nu"],
+    "taunu": ["Wplus_to_tau_nu", "Wminus_to_tau_nu"],
 }
 
 
@@ -314,44 +314,4 @@ print(events['W_on_shell/W_on_shell.PDG'].array())
 print(events['W_off_shell/W_off_shell.momentum.x'].array())
 print(events['W_off_shell/W_off_shell.PDG'].array())
 
-# ud channel PDG
-for label in ("W_on_shell_to_d_u", "W_off_shell_to_d_u"):
-    pdg = events[f"{label}/{label}.PDG"].array()
-    print(f"\n{label}:")
-    for i, p in enumerate(pdg[:50]):
-        print(f"  event {i}: PDG={list(p)}")
-
-# --- W mass == invariant mass of two quark daughters ---
-branch = "W_on_shell_to_d_u"
-
-def GetInvariantMassQuarkPair(branch="W_on_shell_to_d_u"):
-
-    px   = events[f"{branch}/{branch}.momentum.x"].array()
-    py   = events[f"{branch}/{branch}.momentum.y"].array()
-    pz   = events[f"{branch}/{branch}.momentum.z"].array()
-    mass = events[f"{branch}/{branch}.mass"].array()
-
-    mask = ak.num(mass) >= 3
-    px_m, py_m, pz_m, mass_m = px[mask], py[mask], pz[mask], mass[mask]
-
-    e = np.sqrt(px_m**2 + py_m**2 + pz_m**2 + mass_m**2)
-
-    w_mass = mass_m[:, 0]
-
-    e_pair = e[:, 1] + e[:, 2]
-    px_pair = px_m[:, 1] + px_m[:, 2]
-    py_pair = py_m[:, 1] + py_m[:, 2]
-    pz_pair = pz_m[:, 1] + pz_m[:, 2]
-
-    m_pair = np.sqrt(e_pair**2 - (px_pair**2 + py_pair**2 + pz_pair**2))
-
-    print(f"\nW mass vs quark pair invariant mass ({branch}):")
-    for i, (wm, mp) in enumerate(zip(w_mass[:20], m_pair[:20])):
-        print(f"  event {i}: W_mass={float(wm):.4f}  pair_mass={float(mp):.4f}  diff={float(wm-mp):.6f}")
-
-    return()
-
-    
-
-
-GetInvariantMassQuarkPair()
+print(CKM_estimate())
