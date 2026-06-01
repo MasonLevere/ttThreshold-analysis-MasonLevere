@@ -92,20 +92,19 @@ all_processes = {
 
 available_ecm = ['125', '160', '163', '340','345', '350', '355','365']
 
-hadronic  = True
+hadronic  = False
 #semihad  = False
 #lep      = False
 ecm       = 160
 print(ecm)
 
-saveExclJets = True
-
+saveExclJets = False
 
 ### commented out since using new sample
 if not str(ecm) in available_ecm:
     raise ValueError("ecm value not in available_ecm")
 
-channel = "hadronic"
+channel = "inclusive"
 
 if  channel not in ["lep","semihad","had"]:
     print("using defa channel settings")
@@ -198,14 +197,28 @@ lepton_pdg = {
 
 
 w_hadron_decay_names = []
+w_hadron_decay_tlv_names = []
+for (q1, id1), (q2, id2) in combinations(quark_pdg.items(), 2):
+    w_hadron_decay_names.append(f"W_on_shell_to_{q1}_{q2}_idxs")
+    w_hadron_decay_names.append(f"W_off_shell_to_{q1}_{q2}_idxs")
+    w_hadron_decay_names.append(f"W_on_shell_to_{q1}_{q2}_objs")
+    w_hadron_decay_names.append(f"W_off_shell_to_{q1}_{q2}_objs")
+    w_hadron_decay_names.append(f"Mass_{q1}_{q2}_pairs")
+    w_hadron_decay_tlv_names.append(f"W_on_shell_to_{q1}_{q2}_tlv")
+    w_hadron_decay_tlv_names.append(f"W_off_shell_to_{q1}_{q2}_tlv")
+
 w_lepton_decay_names = []
+w_lepton_decay_tlv_names = []
+for lep in lepton_pdg.keys():
+    w_lepton_decay_names.append(f"W_on_shell_to_{lep}_nu")
+    w_lepton_decay_names.append(f"W_off_shell_to_{lep}_nu")
+    w_lepton_decay_tlv_names.append(f"W_on_shell_to_{lep}_nu_tlv")
+    w_lepton_decay_tlv_names.append(f"W_off_shell_to_{lep}_nu_tlv")
 
 
 all_branches = [
     "nlep", "lep_p", 'lep_theta', 'lep_phi',
     "missing_p", "missing_p_theta", "missing_p_phi", "missing_pt",
-    "jets_p4",
-    "jet_p", "jet_e", "jet_mass", "jet_phi", "jet_theta", "jet_nconst", "event_njet",
     "njets_R5",
     "nbjets_R5_true", "ncjets_R5_true","nljets_R5_true","ngjets_R5_true",
      "bjet1_R5_true_p","ljet1_R5_true_p",
@@ -217,15 +230,6 @@ all_branches = [
     "Ws_all", "HardWs_all","HardWs_all_mass", "HardWs_all_energy", "HardWs_all_p",
     "W_on_shell_idx", "W_off_shell_idx",
     "on_shell_quark_idxs", "off_shell_quark_idxs", "All_W_quarks_idx",
-    "all_W_quarks_obj", "all_W_quarks_tlv",
-    "matched_jets_to_q_idx", "matched_jets_to_q_under_min_delR", "matched_jets_to_q_delta_Rs",
-    "simple_jet_1_deltaR", "simple_jet_2_deltaR", "simple_jet_3_deltaR", "simple_jet_4_deltaR",
-    "chi2_matched_jets_to_q",
-    "dijet_masses", "dijet_pair_idx_a", "dijet_pair_idx_b",
-    "Candidate_reco_on_shell_W_jj_mass", "Candidate_reco_off_shell_W_jj_mass",
-    "Candidate_reco_on_shell_W_jj_p_idxs", "Candidate_reco_off_shell_W_jj_p_idxs",
-    "Candidate_reco_on_shell_W_jj_flavor", "Candidate_reco_off_shell_W_jj_flavor",
-    "reco_W_jj_match_truth",
     "on_shell_quark_objs", "off_shell_quark_objs",
     "Mass_qq_pairs",
     "Candidate_on_shell_W_qq_p_idxs", "Candidate_off_shell_W_qq_p_idxs",
@@ -298,9 +302,9 @@ class RDFanalysis:
             "FCCAnalyses::ZHfunctions::sel_iso(0.25)(electrons_sel, electrons_iso)",
         )
 
-        if channel == "hadronic":
-            #hadronic=True
-            df = df.Filter("muons_sel_iso.size() + electrons_sel_iso.size() == 0")
+        # if channel == "had":
+        #     #hadronic=True
+        #     df = df.Filter("muons_sel_iso.size() + electrons_sel_iso.size() == 0")
         # elif  channel == "semihad":
         #     #semihad=True
         #     df = df.Filter("muons_sel_iso.size() + electrons_sel_iso.size() == 1")
@@ -571,10 +575,6 @@ class RDFanalysis:
         df = df.Define("on_shell_quark_objs",  "FCCAnalyses::ZHfunctions::get_mc(on_shell_quark_idxs, Particle)")
         df = df.Define("off_shell_quark_objs", "FCCAnalyses::ZHfunctions::get_mc(off_shell_quark_idxs, Particle)")
 
-        # want the 4 vecs of all quarks in hadronic events
-        df = df.Define("all_W_quarks_obj", "FCCAnalyses::ZHfunctions::get_mc(All_W_quarks_idx, Particle)")
-        df = df.Define("all_W_quarks_tlv", "FCCAnalyses::MCParticle::get_tlv(all_W_quarks_obj)")
-
         
         df = df.Define(
             f"All_W_quarks_pairs_idx",
@@ -634,7 +634,7 @@ class RDFanalysis:
 
 
 
-        nJets = 4  # WW → qqqq fully hadronic: 4 quarks → 4 jets
+        nJets = 4 if  channel == "semihad" else 6
 
         collections_noleps = copy.deepcopy(collections)
         collections_noleps["PFParticles"] = "ReconstructedParticlesNoMuNoEl"
@@ -712,103 +712,6 @@ class RDFanalysis:
                     jetClusteringHelper.jets
                 ),
             )
-
-        # start analyzing jets by first matching jets to quarks, so need 4vecs of quarks and jets
-        # returns indexs that map from jets to quarks
-        df = df.Define(
-            'matched_jets_to_q',
-            'FCCAnalyses::ZHfunctions::MatchJetsToQuarks(jets_p4, all_W_quarks_tlv, 0.1)'
-        )
-
-
-        df = df.Define(
-            'matched_jets_to_q_idx',
-            'matched_jets_to_q.idx'
-        )
-
-        df = df.Define(
-            'matched_jets_to_q_under_min_delR',
-            'matched_jets_to_q.under_min_delR'
-        )
-
-        df = df.Define(
-            'matched_jets_to_q_delta_Rs',
-            'matched_jets_to_q.delta_Rs'
-        )
-
-        # make seperate collections for each jet
-        for i in range(nJets):
-            df = df.Define(f"simple_jet_{i+1}_deltaR", f"matched_jets_to_q_delta_Rs[{i}]")
-
-
-        # matching jets to quarks using a chi-squared fit instead that relies on the simple matchjetstoquarks function
-        df = df.Define(
-            'chi2_matched_jets_to_q',
-            'FCCAnalyses::ZHfunctions::JtoQ_ChiSquared(jets_p4, all_W_quarks_tlv, ROOT::VecOps::RVec<double>({0.05, 0.05, 0.05, 0.05}), 0.1)'
-        )
-        
-
-
-
-        # now we want a function that will do the chi squared test and return the best permutation
-
-
-
-
-        #df = df.Filter("matched_jets_to_q_under_min_delR == 1", "all jets matched within delR")
-
-        # now we want to take our 4vecs of our jets and compute all dijet masses
-        # function currently only gives the masses, not how they are paired
-
-        df = df.Define(
-            "dijet_info",
-            "FCCAnalyses::ZHfunctions::all_invariant_masses_and_pair_idxs(jets_p4)"
-        )
-
-        df = df.Define(
-            "dijet_masses",
-            "dijet_info.masses"
-        )
-
-        # list of tuples that say how the pairs are built from the jets vector
-        df = df.Define(
-            "dijet_pairs_idxs",
-            "dijet_info.pair_idxs"
-        )
-
-        # temporary
-        df = df.Define("dijet_pair_idx_a", "dijet_info.pair_idxs[0]")  # first jet of each pair
-        df = df.Define("dijet_pair_idx_b", "dijet_info.pair_idxs[1]")  # second jet of each pair
-
-
-        # now try to do a similar thing to what we did with quarks, may have to manipulate some indexs around since function expects only quark info
-
-        
-        # need to get dijet_pairs_idxs to point
-
-        df = df.Define(
-            "dijet_pairs_as_quark_idx",
-            "FCCAnalyses::ZHfunctions::transform_pair_idxs(dijet_pairs_idxs, matched_jets_to_q_idx)"
-        )
-
-
-        df = df.Define(
-            f"Candidate_reco_W_jj_pairs",
-            f"(dijet_masses.size() == 6) ? "  #dijet mass   # indexs of quarks (so need to point jet_to_quark_idxs to get their idxs first)    # modified dijet_pairs_idxs (need to check these should be pointing to jets which need to point to quarks)
-            f"FCCAnalyses::ZHfunctions::compare_pair_mass_to_w(dijet_masses, All_W_quarks_idx, dijet_pairs_as_quark_idx, Particle, W_on_shell_decay_idx) : "
-            f"FCCAnalyses::ZHfunctions::OnOffidx{{}}"
-        )
-
-        df = df.Define("Candidate_reco_on_shell_W_jj_p_idxs",  "Candidate_reco_W_jj_pairs.on_shell_idx")
-        df = df.Define("Candidate_reco_off_shell_W_jj_p_idxs", "Candidate_reco_W_jj_pairs.off_shell_idx")
-        df = df.Define("Candidate_reco_on_shell_W_jj_mass",    "Candidate_reco_W_jj_pairs.on_shell_mass")
-        df = df.Define("Candidate_reco_off_shell_W_jj_mass",   "Candidate_reco_W_jj_pairs.off_shell_mass")
-        df = df.Define("Candidate_reco_on_shell_W_jj_flavor",  "Candidate_reco_W_jj_pairs.on_shell_flavor")
-        df = df.Define("Candidate_reco_off_shell_W_jj_flavor", "Candidate_reco_W_jj_pairs.off_shell_flavor")
-        df = df.Define("reco_W_jj_match_truth",                "Candidate_reco_W_jj_pairs.match_truth")
-
-
-        # exclusive at 4 jets
         
         df = df.Define(
             "jets_R5_p4",

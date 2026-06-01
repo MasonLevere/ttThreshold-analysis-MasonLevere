@@ -469,6 +469,312 @@ OnOffidx compare_pair_mass_to_w(
     return result;
 }
 
+// create function that takes two collections of 4 vectors of the same size, 
+// and then matches them based on the smallest deltaR value first, then second smallest of the remaining and so on,
+// optionally, can input an overall minimum deltaR that is imposed on the last match, and therefor all of the
+// matches before too
+// in this case we match reco jets to mc quarks
+
+
+//ROOT::VecOps::RVec<TLorentzVector>
+
+struct JetToQuarkInfo {
+    ROOT::VecOps::RVec<int> idx;
+    ROOT::VecOps::RVec<double> delta_Rs;
+    int under_min_delR = 0;
+    
+};
+
+
+
+// delta_R vector is not ordered the same as idx vector, it returns in order of how we chose jets, so we always get the minimum quark-jet combo first 
+JetToQuarkInfo MatchJetsToQuarks(
+    const ROOT::VecOps::RVec<TLorentzVector>& jets,   // changed type
+    const ROOT::VecOps::RVec<TLorentzVector>& quarks,
+    double delR_constraint)
+{
+    JetToQuarkInfo result;
+
+    int n = jets.size();
+    result.idx = ROOT::VecOps::RVec<int>(n, -1);
+    
+    std::vector<bool> quark_used(quarks.size(), false);
+
+    for (int iter = 0; iter < n; iter++) {
+        double min_dr = 999;
+        int best_jet = -1, best_quark = -1;
+        for (int j = 0; j < n; j++) {
+            if (result.idx[j] >= 0) continue;
+            for (int q = 0; q < (int)quarks.size(); q++) {
+
+                if (quark_used[q]) continue;
+                double deta = jets[j].Eta() - quarks[q].Eta();   // uppercase
+                double dphi = jets[j].Phi() - quarks[q].Phi();   // uppercase
+                double dr   = std::sqrt(deta*deta + dphi*dphi);
+                if (dr < min_dr) { min_dr = dr; best_jet = j; best_quark = q; }
+
+            }
+        }
+        result.idx[best_jet] = best_quark;
+        result.delta_Rs.push_back(min_dr);
+        quark_used[best_quark] = true;
+
+        if (iter == n - 1 && min_dr < delR_constraint) {
+            result.under_min_delR = 1;
+        }
+        
+    }
+    return result;
+}
+
+
+// modified dijet mass calculator given 4vecs of jets
+// want to modify to give pair indexs as well
+
+
+
+struct DijetInfo {
+    ROOT::VecOps::RVec<double> masses;
+    ROOT::VecOps::RVec<ROOT::VecOps::RVec<size_t>> pair_idxs;
+};
+
+DijetInfo all_invariant_masses_and_pair_idxs(
+    ROOT::VecOps::RVec<TLorentzVector> AllJets)
+{
+    TLorentzVector tlv1;
+    TLorentzVector tlv2;
+    double E, px, py, pz; 
+    double invmass; 
+
+    DijetInfo result;
+
+    ROOT::VecOps::RVec<size_t> first_idxs, second_idxs;
+
+    if(AllJets.size() < 2) {
+        result.masses = ROOT::VecOps::RVec<double>{};
+        result.pair_idxs = ROOT::VecOps::RVec<ROOT::VecOps::RVec<size_t>>{};
+        return result;
+    }
+
+    // For each jet, take its invariant mass with the remaining jets. Stop at last jet.
+    for(int i = 0; i < AllJets.size()-1; ++i) {
+
+    tlv1 = AllJets.at(i); 
+
+        for(int j=i+1; j < AllJets.size(); ++j){ // go until end
+            tlv2 = AllJets.at(j);
+            E = tlv1.E() + tlv2.E();
+            px = tlv1.Px() + tlv2.Px();
+            py = tlv1.Py() + tlv2.Py();
+            pz = tlv1.Pz() + tlv2.Pz();
+
+            invmass = std::sqrt(E*E - px*px - py*py - pz*pz);
+            result.masses.push_back(invmass);
+            first_idxs.push_back(i);
+            second_idxs.push_back(j);
+            
+        }
+    }
+
+    result.pair_idxs.push_back(first_idxs);
+    result.pair_idxs.push_back(second_idxs);
+
+    return result;
+}    
+
+// function used to map one type of index to another for a pair
+
+ROOT::VecOps::RVec<ROOT::VecOps::RVec<size_t>>
+transform_pair_idxs(
+    const ROOT::VecOps::RVec<ROOT::VecOps::RVec<size_t>>& pair_idxs,
+    const ROOT::VecOps::RVec<int>& jet_to_quark)
+{
+    ROOT::VecOps::RVec<size_t> a, b;
+    for (size_t k = 0; k < pair_idxs[0].size(); k++) {
+        a.push_back(jet_to_quark[pair_idxs[0][k]]);
+        b.push_back(jet_to_quark[pair_idxs[1][k]]);
+    }
+    return {a, b};
+}
+
+// given an array of size n, put out all combinations of assingments, ie 
+// config[0] = [0,1,2,3] 
+// config[1] = [0,1,3,2] 
+// config[2] = [0,2,1,3] 
+// ...                       (24 total)
+std::vector<std::vector<int>> GetAllPermutations(int n) {
+    std::vector<int> perm(n);
+    std::iota(perm.begin(), perm.end(), 0);  // fill [0, 1, ..., n-1]
+
+    std::vector<std::vector<int>> all;
+    do {
+        all.push_back(perm);
+    } while (std::next_permutation(perm.begin(), perm.end()));
+
+    return all;  // n! entries, each of length n
+}
+
+
+// function that takes permutations and creates the quark jet pairs we need using their tlvs
+
+// delta_Rs and sigmas should be ordered by the order they are selected in, so total global min is in first entry
+double ChiSquared(
+    const ROOT::VecOps::RVec<double>& delta_Rs, 
+    const ROOT::VecOps::RVec<double>& sigmas
+)
+{
+    double result = 0;
+
+    for (int i = 0; i < (int)delta_Rs.size(); i++) {
+        result += (delta_Rs[i]/sigmas[i]) * (delta_Rs[i]/sigmas[i]);
+    }
+
+    return result;
+
+}
+
+
+
+struct JtoQ_ChiSquaredInfo {
+    ROOT::VecOps::RVec<int> idx;
+    ROOT::VecOps::RVec<double> delta_Rs;
+    int under_min_delR = 0;
+    
+};
+
+// jets and quarks should be vectors of tlvs
+JtoQ_ChiSquaredInfo JtoQ_ChiSquared(
+    const ROOT::VecOps::RVec<TLorentzVector>& jets,
+    const ROOT::VecOps::RVec<TLorentzVector>& quarks,
+    const ROOT::VecOps::RVec<double>& sigmas,
+    double delR_constraint)
+{
+    JtoQ_ChiSquaredInfo result;
+
+    std::vector<std::vector<int>> all_permutation_idxs = GetAllPermutations(jets.size());
+
+    double best_chi2 = std::numeric_limits<double>::max();
+    std::vector<int> best_perm;
+
+    for (const auto& perm : all_permutation_idxs) {
+        double chi2 = 0;
+
+        std::vector<TLorentzVector> jets_perm;
+        std::vector<TLorentzVector> quarks_perm;
+
+        for (int j = 0; j < (int)jets.size(); j++) {
+            int q = perm[j];
+            jets_perm.push_back(jets[j]);
+            quarks_perm.push_back(quarks[q]);
+        }
+
+        JetToQuarkInfo match_perm = MatchJetsToQuarks(jets_perm, quarks_perm, delR_constraint);
+
+        auto delta_Rs = match_perm.delta_Rs;
+        auto matched  = match_perm.under_min_delR;
+
+        chi2 = ChiSquared(delta_Rs, sigmas);
+
+        if (chi2 < best_chi2) {
+            best_chi2    = chi2;
+            best_perm    = perm;
+            result.idx            = match_perm.idx;
+            result.delta_Rs       = match_perm.delta_Rs;
+            result.under_min_delR = match_perm.under_min_delR;
+        }
+    }
+
+    return result;
+}
+
+// struct JetToQuarkInfo {
+//     ROOT::VecOps::RVec<int> idx;
+//     ROOT::VecOps::RVec<double> delta_Rs;
+//     int under_min_delR = 0;
+    
+// };
+
+
+
+// // delta_R vector is not ordered the same as idx vector, it returns in order of how we chose jets, so we always get the minimum quark-jet combo first 
+// JetToQuarkInfo MatchJetsToQuarks(
+//     const ROOT::VecOps::RVec<TLorentzVector>& jets,   // changed type
+//     const ROOT::VecOps::RVec<TLorentzVector>& quarks,
+//     double delR_constraint)
+// {
+//     JetToQuarkInfo result;
+
+//     int n = jets.size();
+//     result.idx = ROOT::VecOps::RVec<int>(n, -1);
+    
+//     std::vector<bool> quark_used(quarks.size(), false);
+
+//     for (int iter = 0; iter < n; iter++) {
+//         double min_dr = 999;
+//         int best_jet = -1, best_quark = -1;
+//         for (int j = 0; j < n; j++) {
+//             if (result.idx[j] >= 0) continue;
+//             for (int q = 0; q < (int)quarks.size(); q++) {
+
+//                 if (quark_used[q]) continue;
+//                 double deta = jets[j].Eta() - quarks[q].Eta();   // uppercase
+//                 double dphi = jets[j].Phi() - quarks[q].Phi();   // uppercase
+//                 double dr   = std::sqrt(deta*deta + dphi*dphi);
+//                 if (dr < min_dr) { min_dr = dr; best_jet = j; best_quark = q; }
+
+//             }
+//         }
+//         result.idx[best_jet] = best_quark;
+//         result.delta_Rs.push_back(min_dr);
+//         quark_used[best_quark] = true;
+
+//         if (iter == n - 1 && min_dr < delR_constraint) {
+//             result.under_min_delR = 1;
+//         }
+        
+//     }
+//     return result;
+// }
+
+// // delta_R vector is not ordered the same as idx vector, it returns in order of how we chose jets, so we always get the minimum quark-jet combo first 
+// JetToQuarkInfo MatchJetsToQuarks(
+//     const ROOT::VecOps::RVec<TLorentzVector>& jets,   // changed type
+//     const ROOT::VecOps::RVec<TLorentzVector>& quarks,
+//     double delR_constraint)
+// {
+//     JetToQuarkInfo result;
+
+//     int n = jets.size();
+//     result.idx = ROOT::VecOps::RVec<int>(n, -1);
+    
+//     std::vector<bool> quark_used(quarks.size(), false);
+
+//     for (int iter = 0; iter < n; iter++) {
+//         double min_dr = 999;
+//         int best_jet = -1, best_quark = -1;
+//         for (int j = 0; j < n; j++) {
+//             if (result.idx[j] >= 0) continue;
+//             for (int q = 0; q < (int)quarks.size(); q++) {
+
+//                 if (quark_used[q]) continue;
+//                 double deta = jets[j].Eta() - quarks[q].Eta();   // uppercase
+//                 double dphi = jets[j].Phi() - quarks[q].Phi();   // uppercase
+//                 double dr   = std::sqrt(deta*deta + dphi*dphi);
+//                 if (dr < min_dr) { min_dr = dr; best_jet = j; best_quark = q; }
+
+//             }
+//         }
+//         result.idx[best_jet] = best_quark;
+//         result.delta_Rs.push_back(min_dr);
+//         quark_used[best_quark] = true;
+
+//         if (iter == n - 1 && min_dr < delR_constraint) {
+//             result.under_min_delR = 1;
+//         }
+        
+//     }
+//     return result;
+// }
 
 
 

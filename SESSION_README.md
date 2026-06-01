@@ -13,8 +13,10 @@
 ## File Paths
 
 - Input: `/eos/user/m/mlevere/ttThreshold-analysis/localSamples/`
-- Output: `/eos/user/m/mlevere/ttThreshold-analysis/outputs/treemaker/WbWb/inclusive/`
-- `inspect_du.py` reads from the EOS output path
+- Output: `/eos/user/m/mlevere/ttThreshold-analysis/outputs/treemaker/WbWb/hadronic_WW/`
+- `inspect_du.py` reads gen-level quark/W matching output
+- `inspect_jets.py` reads reco jet + matching output
+- `qq_histplot.py` plots gen and reco W mass candidates
 
 ---
 
@@ -23,156 +25,154 @@
 **`TwoParticleGroups` struct:**
 ```cpp
 struct TwoParticleGroups {
-    int high_mass_idx = -1;  // index in full Particle collection of higher-mass W
-    int low_mass_idx  = -1;  // index in full Particle collection of lower-mass W
+    int high_mass_idx = -1;
+    int low_mass_idx  = -1;
 };
 ```
 
 **`OnOffidx` struct:**
 ```cpp
 struct OnOffidx {
-    ROOT::VecOps::RVec<int> on_shell_idx;   // 2 particle indices of best on-shell pair
-    ROOT::VecOps::RVec<int> off_shell_idx;  // 2 particle indices of remaining off-shell pair
-    double on_shell_mass  = 0.0;            // invariant mass of best on-shell pair
-    double off_shell_mass = 0.0;            // invariant mass of remaining pair
-    int match_truth = 0;                    // 1 if best pair came from positions 0,1 (on-shell W quarks)
+    ROOT::VecOps::RVec<int> on_shell_idx;
+    ROOT::VecOps::RVec<int> off_shell_idx;
+    double on_shell_mass  = 0.0;
+    double off_shell_mass = 0.0;
+    ROOT::VecOps::RVec<int> on_shell_flavor;
+    ROOT::VecOps::RVec<int> off_shell_flavor;
+    int match_truth = 0;
 };
 ```
 
-**`get_on_and_off_shell_WW_160ecm`** — sorts HardWs by mass, momentum-matches back to full Particle. Returns `high_mass_idx` (on-shell) and `low_mass_idx` (off-shell), -1 if no match.
+**`JetToQuarkInfo` struct:**
+```cpp
+struct JetToQuarkInfo {
+    ROOT::VecOps::RVec<int> idx;        // per jet: matched quark index (jet-indexed)
+    ROOT::VecOps::RVec<double> delta_Rs; // ΔR of each match in greedy order (NOT jet-indexed)
+    int under_min_delR = 0;             // 1 if last match had ΔR < delR_constraint (good)
+};
+```
 
-**`get_pair_masses`** — computes invariant mass of all 6 quark pairs from 4 quark indices. Returns `RVec<double>` of length 6.
-- `pairs[0][i]` / `pairs[1][i]` are positions within `quark_idxs` (0–3), not particle indices
-- Energy computed as `sqrt(|p|² + m²)` — `MCParticleData` has no `.energy` field
+**`DijetInfo` struct:**
+```cpp
+struct DijetInfo {
+    ROOT::VecOps::RVec<double> masses;                        // 6 pairwise masses
+    ROOT::VecOps::RVec<ROOT::VecOps::RVec<size_t>> pair_idxs; // [0]=first jet, [1]=second jet per pair
+};
+```
 
-**`compare_pair_mass_to_w`** — finds the pair (among 6) whose mass is closest to the on-shell W mass, fills `OnOffidx`. The off-shell mass is found by searching for the pair where neither element is `pos1` or `pos2`.
-- `match_truth`: positions 0,1 in `quark_idxs` are the on-shell W's quarks (by Concatenate order). If best pair uses both of those → `match_truth=1`.
+**`get_mc`** — retrieves `MCParticleData` objects by index from the Particle collection.
+
+**`get_on_and_off_shell_WW_160ecm`** — sorts two hard Ws by mass, momentum-matches back to Particle. Returns `TwoParticleGroups`.
+
+**`get_pair_masses`** — 6 gen quark pair invariant masses. Energy computed as `sqrt(|p|²+m²)`.
+
+**`get_decaying_W_idx`** — walks W decay chain (depth ≤ 20) to find the W with quark daughters.
+
+**`compare_pair_mass_to_w`** — finds which of 6 pairs is closest to on-shell W mass, fills `OnOffidx`. `match_truth=1` if best pair uses positions 0,1 (on-shell W's quarks).
+
+**`MatchJetsToQuarks`** — greedy minimum-ΔR matching of reco jets to gen quarks (`RVec<TLorentzVector>` both). `delR_constraint=0.1`. Returns `JetToQuarkInfo`:
+- `.idx[j]` = quark index matched to jet j (jet-indexed, 0-3)
+- `.delta_Rs` = ΔR values in greedy selection order (NOT jet-indexed — `delta_Rs[0]` = best global match first)
+- `.under_min_delR = 1` if worst (last) match had ΔR < constraint (good match flag)
+
+**`all_invariant_masses_and_pair_idxs`** — computes all 6 pairwise invariant masses from `RVec<TLorentzVector>`. Returns `DijetInfo` with masses and `pair_idxs` in same format as `Combinations()` output.
+
+**`transform_pair_idxs`** — maps jet positions in `pair_idxs` to quark positions via `matched_jets_to_q_idx`, so `dijet_pairs_idxs` can be passed to `compare_pair_mass_to_w`.
 
 ---
 
 ## Current State of `treemaker_WW.py`
 
-### Filters applied (in order)
-1. `HardWs_all.size() == 2` — require exactly 2 hard W bosons
-2. Fully hadronic: at least one on-shell quark channel non-empty AND at least one off-shell quark channel non-empty
-3. Valid W pairing: `Candidate_on_shell_W_qq_p_idxs.size() > 0 && Candidate_off_shell_W_qq_p_idxs.size() > 0`
+### Settings
+- `channel = "hadronic"`, `saveExclJets = True`, `ecm = 160`, `nJets = 4`
+- Output: `/eos/user/m/mlevere/ttThreshold-analysis/outputs/treemaker/WbWb/hadronic_WW/`
 
-### W sorting
+### Filters (in order)
+1. `HardWs_all.size() == 2`
+2. Hadronic channel filter (isolated lepton veto: `muons + electrons == 0`)
+3. Fully hadronic: both on-shell and off-shell quark channels non-empty
+4. Valid W pairing: `Candidate_on/off_shell_W_qq_p_idxs.size() > 0`
+5. **`matched_jets_to_q_under_min_delR == 1`** — all jets matched within ΔR < 0.1
+
+### Gen-level pipeline
+- `Ws_on_and_off_shell` → `W_on/off_shell_idx`, `W_on/off_shell_decay_idx`
+- 15-channel quark loop → hadronic filter → `on/off_shell_quark_idxs`
+- `All_W_quarks_idx` = Concatenate(on, off) — size 4, order [on_q1, on_q2, off_q1, off_q2]
+- `all_W_quarks_obj` / `all_W_quarks_tlv` — MCParticleData and TLorentzVector for 4 quarks
+- `Mass_qq_pairs` — 6 gen quark pair masses
+- `Candidate_W_qq_pairs` → `Candidate_on/off_shell_W_qq_mass`, `_p_idxs`, `_flavor`, `W_qq_match_truth`
+
+### Reco-level pipeline
+- Lepton subtraction → `ReconstructedParticlesNoMuNoEl`
+- **Exclusive jets** (ee-kt, N=4): `ExclusiveJetClusteringHelper`
+  - `jets_p4` — `RVec<TLorentzVector>`, uproot: `jets[j]["fP"]["fX/fY/fZ"]`, `["fE"]`
+  - Scalar branches: `jet_p`, `jet_e`, `jet_mass`, `jet_phi`, `jet_theta`, `jet_nconst`, `event_njet`
+- **Inclusive jets** (anti-kT R=0.5, pT>10 GeV): `InclusiveJetClusteringHelper` → `jets_R5_*`
+
+### Jet–quark matching
 ```python
-df.Define("Ws_on_and_off_shell",
-    "FCCAnalyses::ZHfunctions::get_on_and_off_shell_WW_160ecm(HardWs_all, Particle, 80.4, 2.1)")
-df.Define("W_on_shell_idx",  "Ws_on_and_off_shell.high_mass_idx")  # int
-df.Define("W_off_shell_idx", "Ws_on_and_off_shell.low_mass_idx")   # int
+df.Define("matched_jets_to_q",
+    "FCCAnalyses::ZHfunctions::MatchJetsToQuarks(jets_p4, all_W_quarks_tlv, 0.1)")
+df.Define("matched_jets_to_q_idx",            "matched_jets_to_q.idx")
+df.Define("matched_jets_to_q_under_min_delR", "matched_jets_to_q.under_min_delR")
+df.Define("matched_jets_to_q_delta_Rs",       "matched_jets_to_q.delta_Rs")
+# per-iteration ΔR (greedy order):
+for i in range(4):
+    df.Define(f"simple_jet_{i}_deltaR", f"matched_jets_to_q_delta_Rs[{i}]")
+df.Filter("matched_jets_to_q_under_min_delR == 1", "all jets matched within delR")
 ```
 
-### Quark loop — defines per quark pair (q1, q2), 15 channels total
+### Dijet masses and reco W reconstruction
 ```python
-# get_indices_MotherByIndex args: (mother_idx, {pdg1,pdg2}, stableDaughters=false,
-#   chargeConjugateMother=true, chargeConjugateDaughters=true, Particle, DaughterIndex)
-# CRITICAL: chargeConjugateDaughters=true is required for W→qq̄
-
-df.Define(f"W_on_shell_to_{q1}_{q2}_idxs", ...)   # [W_idx, q1_idx, q2_idx], size 3 if matched
-df.Define(f"W_off_shell_to_{q1}_{q2}_idxs", ...)
-df.Define(f"W_on_shell_to_{q1}_{q2}_objs", ...)    # MCParticleData objects, guarded size > 0
-df.Define(f"W_off_shell_to_{q1}_{q2}_objs", ...)
-df.Define(f"W_on_shell_to_{q1}_{q2}_quarks_idxs",  # Take positions [1,2], strip W, guarded size > 2
-df.Define(f"W_off_shell_to_{q1}_{q2}_quarks_idxs", ...)
+df.Define("dijet_info",   "FCCAnalyses::ZHfunctions::all_invariant_masses_and_pair_idxs(jets_p4)")
+df.Define("dijet_masses", "dijet_info.masses")            # RVec<double> size 6
+df.Define("dijet_pairs_idxs",  "dijet_info.pair_idxs")   # RVec<RVec<size_t>> — NOT saveable
+df.Define("dijet_pair_idx_a",  "dijet_info.pair_idxs[0]") # RVec<size_t> — saveable
+df.Define("dijet_pair_idx_b",  "dijet_info.pair_idxs[1]") # RVec<size_t> — saveable
+df.Define("dijet_pairs_as_quark_idx",
+    "FCCAnalyses::ZHfunctions::transform_pair_idxs(dijet_pairs_idxs, matched_jets_to_q_idx)")
+df.Define("Candidate_reco_W_jj_pairs",
+    "compare_pair_mass_to_w(dijet_masses, All_W_quarks_idx, dijet_pairs_as_quark_idx, Particle, W_on_shell_decay_idx)")
+# Extracted:
+df.Define("Candidate_reco_on/off_shell_W_jj_mass")
+df.Define("Candidate_reco_on/off_shell_W_jj_p_idxs")
+df.Define("Candidate_reco_on/off_shell_W_jj_flavor")
+df.Define("reco_W_jj_match_truth")
 ```
 
-### After loop: hadronic filter
-```python
-on_shell_had  = " || ".join(f"W_on_shell_to_{q1}_{q2}_quarks_idxs.size() > 0" ...)
-off_shell_had = " || ".join(f"W_off_shell_to_{q1}_{q2}_quarks_idxs.size() > 0" ...)
-df = df.Filter(f"({on_shell_had}) && ({off_shell_had})", "fully hadronic")
-```
-
-### After filter: global quark collection (cross-channel safe)
-Chained ternary walks all 15 channels, picks first non-empty `_quarks_idxs` per W:
-```python
-df.Define("on_shell_quark_idxs", on_expr)   # RVec<int> size 2
-df.Define("off_shell_quark_idxs", off_expr) # RVec<int> size 2
-df.Define("All_W_quarks_idx",
-    "ROOT::VecOps::Concatenate(on_shell_quark_idxs, off_shell_quark_idxs)")  # size 4
-df.Define("on_shell_quark_objs",  "FCCAnalyses::ZHfunctions::get_mc(on_shell_quark_idxs, Particle)")
-df.Define("off_shell_quark_objs", "FCCAnalyses::ZHfunctions::get_mc(off_shell_quark_idxs, Particle)")
-```
-
-This correctly handles events where the two Ws decay to **different** quark flavor channels.
-
-### Pair mass and best-pairing
-```python
-df.Define("All_W_quarks_pairs_idx",   # RVec<RVec<size_t>>, NOT saveable — intermediate only
-    "(All_W_quarks_idx.size() == 4) ? Combinations(All_W_quarks_idx, 2) : RVec<RVec<size_t>>{}")
-df.Define("Mass_qq_pairs",            # RVec<double> length 6
-    "(All_W_quarks_pairs_idx.size() >= 2) ? get_pair_masses(...) : RVec<double>{}")
-df.Define("Candidate_W_qq_pairs",     # OnOffidx struct
-    "(Mass_qq_pairs.size() == 6) ? compare_pair_mass_to_w(...) : OnOffidx{}")
-
-df.Define("Candidate_on_shell_W_qq_p_idxs",  "Candidate_W_qq_pairs.on_shell_idx")
-df.Define("Candidate_off_shell_W_qq_p_idxs", "Candidate_W_qq_pairs.off_shell_idx")
-df.Define("Candidate_on_shell_W_qq_mass",     "Candidate_W_qq_pairs.on_shell_mass")
-df.Define("Candidate_off_shell_W_qq_mass",    "Candidate_W_qq_pairs.off_shell_mass")
-df.Define("W_qq_match_truth",                 "Candidate_W_qq_pairs.match_truth")
-
-df.Filter("Candidate_on_shell_W_qq_p_idxs.size() > 0 && ...", "valid W pairing")
-```
-
-### Saved global branches
-| Branch | Type | Content |
-|---|---|---|
-| `W_on_shell_idx` / `W_off_shell_idx` | `int` | Index in Particle of on/off-shell W |
-| `on_shell_quark_idxs` / `off_shell_quark_idxs` | `RVec<int>` | 2 quark indices per W |
-| `All_W_quarks_idx` | `RVec<int>` | 4 quark indices (on+off concatenated) |
-| `on_shell_quark_objs` / `off_shell_quark_objs` | `RVec<MCParticleData>` | quark objects for PDG lookup |
-| `Mass_qq_pairs` | `RVec<double>` | 6 invariant masses of all quark pairs |
-| `Candidate_on_shell_W_qq_p_idxs` | `RVec<int>` | 2 indices of best on-shell pair |
-| `Candidate_off_shell_W_qq_p_idxs` | `RVec<int>` | 2 indices of complementary off-shell pair |
-| `Candidate_on_shell_W_qq_mass` | `double` | invariant mass of best on-shell pair |
-| `Candidate_off_shell_W_qq_mass` | `double` | invariant mass of complementary pair |
-| `W_qq_match_truth` | `int` | 1 if best pair matched truth on-shell W quarks |
-
-### Saved per-channel branches (15 channels, old loop — still present)
-| Branch | Type | Content |
-|---|---|---|
-| `W_on/off_shell_to_{q1}_{q2}_idxs` | `RVec<int>` | [W_idx, q1_idx, q2_idx] |
-| `W_on/off_shell_to_{q1}_{q2}_objs` | `RVec<MCParticleData>` | [W, q1, q2] objects |
-| `Mass_{q1}_{q2}_pairs` | `RVec<double>` | 6 pair masses (only filled when both Ws matched same channel — mostly empty) |
-
----
-
-## Key Conventions / Gotchas
+### Key conventions / gotchas
 
 | Thing | Detail |
 |---|---|
-| `get_indices_MotherByIndex` return | `[W_idx, q1_idx, q2_idx]` — size 3 when matched, 0 when not |
-| `chargeConjugateDaughters` | **5th arg, must be `true`** for W→qq̄ — was `false` previously, caused ~50% event loss |
-| `chargeConjugateMother` | 4th arg, also `true` — matches both W+ and W− |
-| Ternary fallback types | Must exactly match true branch — `RVec<int>{}`, `RVec<double>{}` etc |
-| `RVec<RVec<size_t>>` | Cannot be saved as TTree branch |
-| `Combinations(vec, 2)` | Throws on empty input — must guard with `size() == 4` |
-| `Combinations` output | Returns positions within vec (0–3), not particle indices |
-| `MCParticleData.energy` | Does NOT exist — compute as `sqrt(|p|² + m²)` |
-| `RVec` in functions.h | No alias — must use `ROOT::VecOps::RVec` and `edm4hep::MCParticleData` |
-| uproot MCParticleData branches | Stored as `branch/branch.field` e.g. `on_shell_quark_objs/on_shell_quark_objs.PDG` |
-| `HardWs_all_mass` ordering | Not sorted — use `sorted()` in Python to get [off_mass, on_mass] |
-| Cross-channel events | Old per-channel `Mass_{q1}_{q2}_pairs` only fills when both Ws in same channel. New global `Mass_qq_pairs` handles cross-channel correctly. |
+| `delta_Rs` ordering | Greedy iteration order, NOT jet order — `delta_Rs[0]` = smallest global ΔR |
+| `matched_jets_to_q_idx` | Jet-indexed — `idx[j]` = quark matched to jet j |
+| `under_min_delR = 1` | Worst match had ΔR < constraint (GOOD) — filter `== 1` keeps well-matched |
+| `delR_constraint` | Currently 0.1 in treemaker call |
+| `jets_p4` uproot | `jets[j]["fP"]["fX/fY/fZ"]` for px/py/pz, `["fE"]` for energy |
+| `dijet_pairs_idxs` | `RVec<RVec<size_t>>` — intermediate only, not saveable |
+| `transform_pair_idxs` | Maps jet positions → quark positions so `compare_pair_mass_to_w` works on reco jets |
+| `all_W_quarks_tlv` | Stored unsplit — not readable field-by-field in uproot; use `all_W_quarks_obj` fields |
+| Quark order in `All_W_quarks_idx` | [on_q1, on_q2, off_q1, off_q2] — indices 0,1 = on-shell W |
+| ee-kt exclusive clustering | Forces exactly N=4 jets; different from anti-kT inclusive |
 
 ---
 
-## `inspect_du.py`
+## Inspect Scripts
 
-Diagnostic script — reads output ROOT file, prints per-event:
-- W on/off-shell indices and masses (sorted from `HardWs_all_mass`)
-- Global quark indices and PDGs (`on_shell_quark_objs`, `off_shell_quark_objs`)
-- All 6 pair masses (`Mass_qq_pairs`)
-- Best on/off-shell pair indices and masses
-- Truth-matching flag
-- Per-channel details for `d_u`, `s_c`, `c_b`
-- Scan all 15 channels for on-shell W decay in last event
+**`inspect_du.py`** — gen-level W/quark matching per event.
 
-```bash
-python inspect_du.py
-```
+**`inspect_jets.py`** — per event prints:
+- Truth W masses, gen quark pair masses, reco dijet W masses (3 lines for comparison)
+- Gen quarks: idx, PDG, E, p, m
+- Reco jets: E, p, m + matched quark, W-side, PDG
+- `under_min_delR` flag
+- All 6 dijet pair masses with jet indices
+
+**`qq_histplot.py`** — histograms:
+- `w_mass_gen_qq.png` — gen on/off-shell
+- `w_mass_reco_jj.png` — reco on/off-shell
+- `w_mass_on_shell_gen_vs_reco.png` — gen vs reco on-shell comparison
+- `w_mass_off_shell_gen_vs_reco.png` — gen vs reco off-shell comparison
 
 ---
 
@@ -181,12 +181,15 @@ python inspect_du.py
 ```bash
 fccanalysis run --nevents=100 treemaker_WW.py
 python inspect_du.py
+python inspect_jets.py
+python qq_histplot.py
 ```
 
 ---
 
 ## What Needs Doing Next
 
-1. **Validate** `W_qq_match_truth` and `Candidate_on/off_shell_W_qq_mass` — check that truth-matched events give masses close to the true W masses
-2. **Run on full sample** once validation passes
-3. **Clean up** old per-channel `Mass_{q1}_{q2}_pairs` / `Candidate_On_Shell_W_*` / `W_on/off_shell_qq_p_idxs_*` defines from the loop — they are dead branches using the old same-channel logic
+1. **Validate** matching quality — check `delta_Rs` distribution and `under_min_delR` rate; tune `delR_constraint` if needed
+2. **Run `qq_histplot.py`** to compare gen vs reco W mass distributions
+3. **Check `reco_W_jj_match_truth`** rate vs `W_qq_match_truth` — quantifies how often reco pairing agrees with gen truth
+4. **Run on full sample** once validation passes
