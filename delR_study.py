@@ -6,17 +6,23 @@ import awkward as ak
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.optimize import minimize
-from scipy.stats import rayleigh, expon
+from scipy.stats import rayleigh, expon, norm
 from scipy.optimize import approx_fprime
 
 
 # ── Background model: "exponential" or "uniform" ─────────────────────────────
 BACKGROUND = "uniform"
 
+# ── Gaussian fit background: True = signal+uniform, False = pure Gaussian ────
+GAUSSIAN_BACKGROUND = False
+
 
 process   = "p8_ee_WW_ecm160"
 split     = "train"   # "train" or "test"
-file_path = f"/eos/user/m/mlevere/ttThreshold-analysis/outputs/treemaker/WbWb/hadronic_WW/{process}.root"
+matching  = "new"     # "new" = chi2 (hadronic_WW_new_matching), "old" = greedy (hadronic_WW)
+
+treemaker_dir = "hadronic_WW_new_matching" if matching == "new" else "hadronic_WW"
+file_path = f"/eos/user/m/mlevere/ttThreshold-analysis/outputs/treemaker/WbWb/{treemaker_dir}/{process}.root"
 
 script_name = os.path.splitext(os.path.basename(__file__))[0]
 out_dir     = os.path.join("plots", script_name)
@@ -24,14 +30,27 @@ os.makedirs(out_dir, exist_ok=True)
 
 tree   = uproot.open(f"{file_path}:events")
 
-branches = ["simple_jet_1_deltaR", "simple_jet_2_deltaR",
-            "simple_jet_3_deltaR", "simple_jet_4_deltaR"]
+branches = [f"simple_jet_{j}_deltaR" for j in range(1, 5)]
+if matching == "new":
+    branches += [f"simple_jet_{j}_delta_eta" for j in range(1, 5)]
+    branches += [f"simple_jet_{j}_delta_phi" for j in range(1, 5)]
 
 arrays = tree.arrays(branches, library="np")
 n      = len(arrays["simple_jet_1_deltaR"])
 half   = n // 2
 arrays = {k: v[:half] for k, v in arrays.items()} if split == "train" else {k: v[half:] for k, v in arrays.items()}
 
+
+def MakeHist(values, name, label, nbins=50, xmin=-0.5, xmax=0.5):
+    h = hist.Hist(hist.axis.Regular(nbins, xmin, xmax, name=name, label=label))
+    h.fill(**{name: np.asarray(values)})
+    return h
+
+def MakeEtaHist(values, nbins=50, xmin=-0.5, xmax=0.5):
+    return MakeHist(values, 'deta', r'$\Delta\eta$', nbins, xmin, xmax)
+
+def MakePhiHist(values, nbins=50, xmin=-0.5, xmax=0.5):
+    return MakeHist(values, 'dphi', r'$\Delta\phi$', nbins, xmin, xmax)
 
 def MakeDelRHist(values, nbins=50, xmin=0, xmax=0.5):
     h = hist.Hist(
@@ -137,6 +156,60 @@ def fit_deltaR(deltaR, label="", x0=None, background=BACKGROUND):
     return result.x, errors
 
 
+def neg_log_likelihood_gaussian(params, values, background):
+    if background:
+        sigma, f, x_max = params
+        if sigma <= 0 or f <= 0 or f >= 1 or x_max <= 0:
+            return np.inf
+        with np.errstate(over='ignore', divide='ignore', invalid='ignore'):
+            bkg_pdf = np.where(np.abs(values) < x_max, 1.0 / (2.0 * x_max), 0.0)
+            p_i = f * norm.pdf(values, loc=0, scale=sigma) + (1 - f) * bkg_pdf
+        return -np.sum(np.log(np.clip(p_i, 1e-10, None)))
+    else:
+        sigma, mu = params
+        if sigma <= 0:
+            return np.inf
+        return -np.sum(norm.logpdf(values, loc=mu, scale=sigma))
+
+
+def fit_gaussian(values, label="", x0=None, background=GAUSSIAN_BACKGROUND):
+    if x0 is None:
+        if background:
+            x0 = [np.std(values), 0.9, np.max(np.abs(values)) * 1.1]
+        else:
+            x0 = [np.std(values), np.mean(values)]
+
+    result = minimize(neg_log_likelihood_gaussian,
+                      x0=x0,
+                      args=(values, background),
+                      method='Nelder-Mead',
+                      options={'maxiter': 100000,
+                               'maxfev': 100000,
+                               'xatol': 1e-8,
+                               'fatol': 1e-8})
+
+    if not result.success:
+        print(f"  WARNING: {label} did not converge — {result.message}")
+
+    H      = hessian(neg_log_likelihood_gaussian, result.x, args=(values, background))
+    cov    = np.linalg.inv(H)
+    errors = np.sqrt(np.diag(cov))
+
+    if background:
+        sigma, f, x_max = result.x
+        print(f"{label}  [signal+uniform]  (x0={[round(v,4) for v in x0]})")
+        print(f"  sigma    = {sigma:.4f} +/- {errors[0]:.4f}  (variance = {sigma**2:.6f})")
+        print(f"  f        = {f:.4f} +/- {errors[1]:.4f}")
+        print(f"  x_max    = {x_max:.4f} +/- {errors[2]:.4f}")
+    else:
+        sigma, mu = result.x
+        print(f"{label}  [pure Gaussian]  (x0={[round(v,4) for v in x0]})")
+        print(f"  sigma    = {sigma:.4f} +/- {errors[0]:.4f}  (variance = {sigma**2:.6f})")
+        print(f"  mu       = {mu:.4f} +/- {errors[1]:.4f}")
+    print(f"  converged: {result.success}  nll={result.fun:.2f}")
+    return result.x, errors
+
+
 all_deltaR_inputs = {
     "Jet 1":    (arrays["simple_jet_1_deltaR"],  [0.02, 0.9, 1.0]),
     "Jet 2":    (arrays["simple_jet_2_deltaR"],  [0.03, 0.9, 1.0]),
@@ -149,3 +222,47 @@ all_deltaR_inputs = {
 
 for label, (deltaR, x0) in all_deltaR_inputs.items():
     fit_deltaR(deltaR, label=label, x0=x0)
+
+
+if matching == "new":
+    # --- delta_eta per jet ---
+    for j in range(1, 5):
+        h = MakeEtaHist(arrays[f"simple_jet_{j}_delta_eta"])
+        PlotDelRHist([h], [f"Jet {j}"],
+                     title=f"Jet-quark $\\Delta\\eta$ — Jet {j}",
+                     outfile=os.path.join(out_dir, f"delta_eta_jet{j}.png"))
+
+    hists = [MakeEtaHist(arrays[f"simple_jet_{j}_delta_eta"]) for j in range(1, 5)]
+    PlotDelRHist(hists, [f"Jet {j}" for j in range(1, 5)],
+                 title="Jet-quark $\\Delta\\eta$ — all jets",
+                 outfile=os.path.join(out_dir, "delta_eta_all_jets.png"))
+
+    # --- delta_phi per jet ---
+    for j in range(1, 5):
+        h = MakePhiHist(arrays[f"simple_jet_{j}_delta_phi"])
+        PlotDelRHist([h], [f"Jet {j}"],
+                     title=f"Jet-quark $\\Delta\\phi$ — Jet {j}",
+                     outfile=os.path.join(out_dir, f"delta_phi_jet{j}.png"))
+
+    hists = [MakePhiHist(arrays[f"simple_jet_{j}_delta_phi"]) for j in range(1, 5)]
+    PlotDelRHist(hists, [f"Jet {j}" for j in range(1, 5)],
+                 title="Jet-quark $\\Delta\\phi$ — all jets",
+                 outfile=os.path.join(out_dir, "delta_phi_all_jets.png"))
+
+    # --- Gaussian fits: delta_eta ---
+    print("\n--- Gaussian fits: delta_eta ---")
+    all_eta_inputs = {
+        **{f"Jet {j}": arrays[f"simple_jet_{j}_delta_eta"] for j in range(1, 5)},
+        "All jets": np.concatenate([arrays[f"simple_jet_{j}_delta_eta"] for j in range(1, 5)]),
+    }
+    for label, values in all_eta_inputs.items():
+        fit_gaussian(values, label=label)
+
+    # --- Gaussian fits: delta_phi ---
+    print("\n--- Gaussian fits: delta_phi ---")
+    all_phi_inputs = {
+        **{f"Jet {j}": arrays[f"simple_jet_{j}_delta_phi"] for j in range(1, 5)},
+        "All jets": np.concatenate([arrays[f"simple_jet_{j}_delta_phi"] for j in range(1, 5)]),
+    }
+    for label, values in all_phi_inputs.items():
+        fit_gaussian(values, label=label)

@@ -121,7 +121,7 @@ print(processList)
 inputDir    = "/eos/user/m/mlevere/ttThreshold-analysis/localSamples/"
 
 #Optional: output directory, default is local running directoryp
-outputDir   = "/eos/user/m/mlevere/ttThreshold-analysis/outputs/treemaker/WbWb/{}_WW_new_matching".format(channel)
+outputDir   = "/eos/user/m/mlevere/ttThreshold-analysis/outputs/treemaker/WbWb/{}_WW_sigma_tuning".format(channel)
 
 
 # additional/costom C++ functions, defined in header files (optional)
@@ -205,69 +205,16 @@ w_lepton_decay_names = []
 SIGMA_ETA = 0.0505
 SIGMA_PHI = 0.0529
 
-chi2_cut = 100
-
-
-
+# Only branches needed for sigma fitting — keeps the output ntuple small.
 all_branches = [
-
-    # --- inspect_jets.py ---
-    "jets_p4",
-    "All_W_quarks_idx", "all_W_quarks_obj",
-    "HardWs_all_mass",
-    "matched_jets_to_q_idx", "matched_jets_to_q_under_min_delR",
-    "dijet_masses", "dijet_pair_idx_a", "dijet_pair_idx_b",
-    "Candidate_on_shell_W_qq_mass", "Candidate_off_shell_W_qq_mass",
-    "Candidate_reco_on_shell_W_jj_mass", "Candidate_reco_off_shell_W_jj_mass",
     "reco_W_jj_match_truth",
-
-    # --- delR_study.py ---
-    "simple_jet_1_deltaR", "simple_jet_2_deltaR", "simple_jet_3_deltaR", "simple_jet_4_deltaR",
-    "simple_jet_1_delta_eta", "simple_jet_2_delta_eta", "simple_jet_3_delta_eta", "simple_jet_4_delta_eta",
-    "simple_jet_1_delta_phi", "simple_jet_2_delta_phi", "simple_jet_3_delta_phi", "simple_jet_4_delta_phi",
-
-    # --- qq_histplot.py ---
-    "W_qq_match_truth",
-    'chi2_etaphi_best_chi2', 'chi2_etaphi_second_best_chi2', 'chi2_etaphi_third_best_chi2',
-    'chi2_etaphi_delta_Rs', 'chi2_etaphi_delta_etas', 'chi2_etaphi_delta_phis',
-    'chi2_R_best_chi2', 'chi2_R_second_best_chi2', 'chi2_R_third_best_chi2', 'chi2_R_delta_Rs',
-    'chi2_dR_best_chi2', 'chi2_dR_delta_Rs',
-    'chi2_best_matched', 'chi2_best_unmatched',
-    'chi2_second_best_matched', 'chi2_second_best_unmatched',
-    'deltaRs_matched', 'deltaRs_unmatched',
-    'deltaEtas_matched', 'deltaEtas_unmatched',
-    'deltaPhis_matched', 'deltaPhis_unmatched',
-
-
-    # ---- misc ---
-    "W_on_shell_mass", "W_off_shell_mass",
-
-    # TEMPORARY — not read by any current plotting or inspection script
-    # "nlep", "lep_p", 'lep_theta', 'lep_phi',
-    # "missing_p", "missing_p_theta", "missing_p_phi", "missing_pt",
-    # "jet_p", "jet_e", "jet_mass", "jet_phi", "jet_theta", "jet_nconst", "event_njet",
-    # "njets_R5",
-    # "nbjets_R5_true", "ncjets_R5_true", "nljets_R5_true", "ngjets_R5_true",
-    # "bjet1_R5_true_p", "ljet1_R5_true_p",
-    # "jets_R5_p", "jets_R5_theta", "jets_R5_pflavor",
-    # "bjets_R5_WPp5", "bjets_R5_WPp8", "bjets_R5_WPp85", "bjets_R5_WPp9",
-    # "nbjets_R5_WPp5", "nbjets_R5_WPp8", "nbjets_R5_WPp85", "nbjets_R5_WPp9",
-    # "recojet_isG_R5", "recojet_isU_R5", "recojet_isB_R5", "recojet_isS_R5",
-    # "recojet_isC_R5", "recojet_isD_R5", "recojet_isTAU_R5",
-    # "Ws_all", "HardWs_all", "HardWs_all_energy", "HardWs_all_p",
-    # "W_on_shell_idx", "W_off_shell_idx",
-    # "on_shell_quark_idxs", "off_shell_quark_idxs",
-    # "all_W_quarks_tlv",
-    # "matched_jets_to_q_delta_Rs", "matched_jets_to_q_delta_etas", "matched_jets_to_q_delta_phis",
-    # "chi2_matched_jets_to_q",
-    # "Candidate_reco_on_shell_W_jj_p_idxs", "Candidate_reco_off_shell_W_jj_p_idxs",
-    # "Candidate_reco_on_shell_W_jj_flavor", "Candidate_reco_off_shell_W_jj_flavor",
-    # "on_shell_quark_objs", "off_shell_quark_objs",
-    # "Mass_qq_pairs",
-    # "Candidate_on_shell_W_qq_p_idxs", "Candidate_off_shell_W_qq_p_idxs",
-    # "Candidate_on_shell_W_qq_p_flavor", "Candidate_off_shell_W_qq_p_flavor",
-
-] + w_hadron_decay_names + w_lepton_decay_names
+    "chi2_matched_jets_to_q_delta_etas",
+    "chi2_matched_jets_to_q_delta_phis",
+    "chi2_matched_jets_to_q_delta_Rs",
+    "deltaEtas_matched",
+    "deltaPhis_matched",
+    "deltaRs_matched",
+]
 
 
 
@@ -465,10 +412,6 @@ class RDFanalysis:
 
         df = df.Define("W_on_shell_idx",  "Ws_on_and_off_shell.high_mass_idx")
         df = df.Define("W_off_shell_idx", "Ws_on_and_off_shell.low_mass_idx")
-        df = df.Define("W_on_shell_mass", "Ws_on_and_off_shell.high_mass")
-        df = df.Define("W_off_shell_mass", "Ws_on_and_off_shell.low_mass")
-
-
 
          # quark_pdg = {
         #     'd': 1,
@@ -791,55 +734,75 @@ class RDFanalysis:
 
 
 
-        # chi2 using ΔR with per-jet sigmas
-        df = df.Define(
-            'chi2_matched_jets_to_q_R',
-            'FCCAnalyses::ZHfunctions::JtoQ_ChiSquared_deltaR(jets_p4, all_W_quarks_tlv, ROOT::VecOps::RVec<double>({0.05, 0.05, 0.05, 0.05}), 0.1)'
-        )
-        df = df.Define('chi2_R_idx',              'chi2_matched_jets_to_q_R.idx')
-        df = df.Define('chi2_R_delta_Rs',         'chi2_matched_jets_to_q_R.delta_Rs')
-        df = df.Define('chi2_R_under_min_delR',   'chi2_matched_jets_to_q_R.under_min_delR')
-        df = df.Define('chi2_R_best_chi2',        'chi2_matched_jets_to_q_R.best_chi2')
-        df = df.Define('chi2_R_second_best_chi2', 'chi2_matched_jets_to_q_R.second_best_chi2')
-        df = df.Define('chi2_R_third_best_chi2',  'chi2_matched_jets_to_q_R.third_best_chi2')
+        # #matching jets to quarks using a chi-squared fit using only deltaR
+        # df = df.Define(
+        #     'chi2_matched_jets_to_q',
+        #     'FCCAnalyses::ZHfunctions::JtoQ_ChiSquared_deltaR(jets_p4, all_W_quarks_tlv, ROOT::VecOps::RVec<double>({0.05, 0.05, 0.05, 0.05}), 0.1)'
+        # )
 
         # matching jets to quarks using a chi-squared fit using dPhi and dEta
         # sigmas defined in order of {eta, phi}
         # sigmas estimated from 5,000 events when using old deltaR algorithim (no chi-squared fit), {s_eta = 0.2480, s_phi = 0.2389}
 
         df = df.Define(
-            'chi2_matched_jets_to_q_etaphi',
+            'chi2_matched_jets_to_q',
             f'FCCAnalyses::ZHfunctions::JtoQ_ChiSquared_eta_phi(jets_p4, all_W_quarks_tlv, ROOT::VecOps::RVec<double>({{{SIGMA_ETA}, {SIGMA_PHI}}}), 0.1)'
         )
 
-        df = df.Define('chi2_etaphi_idx',              'chi2_matched_jets_to_q_etaphi.idx')
-        df = df.Define('chi2_etaphi_under_min_delR',   'chi2_matched_jets_to_q_etaphi.under_min_delR')
-        df = df.Define('chi2_etaphi_delta_Rs',         'chi2_matched_jets_to_q_etaphi.delta_Rs')
-        df = df.Define('chi2_etaphi_delta_etas',       'chi2_matched_jets_to_q_etaphi.delta_etas')
-        df = df.Define('chi2_etaphi_delta_phis',       'chi2_matched_jets_to_q_etaphi.delta_phis')
-        df = df.Define('chi2_etaphi_best_chi2',        'chi2_matched_jets_to_q_etaphi.best_chi2')
-        df = df.Define('chi2_etaphi_second_best_chi2', 'chi2_matched_jets_to_q_etaphi.second_best_chi2')
-        df = df.Define('chi2_etaphi_third_best_chi2',  'chi2_matched_jets_to_q_etaphi.third_best_chi2')
-
-        # chi2 using ΔR only (sigma=1 → equivalent to minimising Σ ΔR²)
         df = df.Define(
-            'chi2_matched_jets_to_q_dR',
-            'FCCAnalyses::ZHfunctions::JtoQ_ChiSquared_deltaR(jets_p4, all_W_quarks_tlv, ROOT::VecOps::RVec<double>({1.0}), 0.1)'
+            'chi2_matched_jets_to_q_idx',
+            'chi2_matched_jets_to_q.idx'
         )
-        df = df.Define('chi2_dR_idx',            'chi2_matched_jets_to_q_dR.idx')
-        df = df.Define('chi2_dR_under_min_delR', 'chi2_matched_jets_to_q_dR.under_min_delR')
-        df = df.Define('chi2_dR_delta_Rs',       'chi2_matched_jets_to_q_dR.delta_Rs')
-        df = df.Define('chi2_dR_best_chi2',      'chi2_matched_jets_to_q_dR.best_chi2')
+
+        df = df.Define(
+            'chi2_matched_jets_to_q_under_min_delR',
+            'chi2_matched_jets_to_q.under_min_delR'
+        )
+
+        df = df.Define(
+            'chi2_matched_jets_to_q_delta_Rs',
+            'chi2_matched_jets_to_q.delta_Rs'
+        )
+
+        df = df.Define(
+            'chi2_matched_jets_to_q_delta_etas',
+            'chi2_matched_jets_to_q.delta_etas'
+        )
+
+        df = df.Define(
+            'chi2_matched_jets_to_q_delta_phis',
+            'chi2_matched_jets_to_q.delta_phis'
+        )
+
+        df = df.Define(
+            'chi2_matched_jets_to_q_best_chi2',
+            'chi2_matched_jets_to_q.best_chi2'
+        )
+
+        df = df.Define(
+            'chi2_matched_jets_to_q_second_best_chi2',
+            'chi2_matched_jets_to_q.second_best_chi2'
+        )
 
         
 
 
 
-        #Filter out events below defined chi2 cutoff, and we plan on using the eta/phi chi2 method
-        #df = df.Filter(f"chi2_etaphi_best_chi2 <= {chi2_cut}", "events cut by their best chi2 value")
+        # Filter out events below dR = 0.1
+        ##df = df.Filter("chi2_matched_jets_to_q_under_min_delR == 1", "all jets matched within delR for new matching")
 
         # for i in range(nJets):
         #     df = df.Define(f"chi2_jet_{i+1}_deltaR", f"chi2_matched_jets_to_q_delta_Rs[{i}]")
+        
+
+
+
+        # now we want a function that will do the chi squared test and return the best permutation
+
+
+
+
+        #df = df.Filter("matched_jets_to_q_under_min_delR == 1", "all jets matched within delR")
 
         # now we want to take our 4vecs of our jets and compute all dijet masses
         # function currently only gives the masses, not how they are paired
@@ -872,9 +835,8 @@ class RDFanalysis:
 
         df = df.Define(
             "dijet_pairs_as_quark_idx",
-            "FCCAnalyses::ZHfunctions::transform_pair_idxs(dijet_pairs_idxs, chi2_etaphi_idx)"
+            "FCCAnalyses::ZHfunctions::transform_pair_idxs(dijet_pairs_idxs, chi2_matched_jets_to_q_idx)"
         )
-
 
 
         df = df.Define(
@@ -893,27 +855,28 @@ class RDFanalysis:
         df = df.Define("reco_W_jj_match_truth",                "Candidate_reco_W_jj_pairs.match_truth")
 
         df = df.Define("chi2_best_matched",
-            "reco_W_jj_match_truth == 1 ? chi2_etaphi_best_chi2 : -999.0")
+            "reco_W_jj_match_truth == 1 ? chi2_matched_jets_to_q_best_chi2 : -999.0")
         df = df.Define("chi2_best_unmatched",
-            "reco_W_jj_match_truth == 0 ? chi2_etaphi_best_chi2 : -999.0")
+            "reco_W_jj_match_truth == 0 ? chi2_matched_jets_to_q_best_chi2 : -999.0")
         df = df.Define("chi2_second_best_matched",
-            "reco_W_jj_match_truth == 1 ? chi2_etaphi_second_best_chi2 : -999.0")
+            "reco_W_jj_match_truth == 1 ? chi2_matched_jets_to_q_second_best_chi2 : -999.0")
         df = df.Define("chi2_second_best_unmatched",
-            "reco_W_jj_match_truth == 0 ? chi2_etaphi_second_best_chi2 : -999.0")
+            "reco_W_jj_match_truth == 0 ? chi2_matched_jets_to_q_second_best_chi2 : -999.0")
 
+        # per-jet ΔR, Δη, Δφ split by reco pairing truth (-999 sentinel for inactive category)
         _sentinel = "ROOT::VecOps::RVec<double>(4, -999.0)"
         df = df.Define("deltaRs_matched",
-            f"reco_W_jj_match_truth == 1 ? chi2_etaphi_delta_Rs : {_sentinel}")
+            f"reco_W_jj_match_truth == 1 ? chi2_matched_jets_to_q_delta_Rs : {_sentinel}")
         df = df.Define("deltaRs_unmatched",
-            f"reco_W_jj_match_truth == 0 ? chi2_etaphi_delta_Rs : {_sentinel}")
+            f"reco_W_jj_match_truth == 0 ? chi2_matched_jets_to_q_delta_Rs : {_sentinel}")
         df = df.Define("deltaEtas_matched",
-            f"reco_W_jj_match_truth == 1 ? chi2_etaphi_delta_etas : {_sentinel}")
+            f"reco_W_jj_match_truth == 1 ? chi2_matched_jets_to_q_delta_etas : {_sentinel}")
         df = df.Define("deltaEtas_unmatched",
-            f"reco_W_jj_match_truth == 0 ? chi2_etaphi_delta_etas : {_sentinel}")
+            f"reco_W_jj_match_truth == 0 ? chi2_matched_jets_to_q_delta_etas : {_sentinel}")
         df = df.Define("deltaPhis_matched",
-            f"reco_W_jj_match_truth == 1 ? chi2_etaphi_delta_phis : {_sentinel}")
+            f"reco_W_jj_match_truth == 1 ? chi2_matched_jets_to_q_delta_phis : {_sentinel}")
         df = df.Define("deltaPhis_unmatched",
-            f"reco_W_jj_match_truth == 0 ? chi2_etaphi_delta_phis : {_sentinel}")
+            f"reco_W_jj_match_truth == 0 ? chi2_matched_jets_to_q_delta_phis : {_sentinel}")
 
 
 

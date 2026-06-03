@@ -2,7 +2,7 @@ import uproot
 import numpy as np
 
 process = "p8_ee_WW_ecm160"
-file_path = f"/eos/user/m/mlevere/ttThreshold-analysis/outputs/treemaker/WbWb/hadronic_WW/{process}.root"
+file_path = f"/eos/user/m/mlevere/ttThreshold-analysis/outputs/treemaker/WbWb/hadronic_WW_new_matching/{process}.root"
 
 f = uproot.open(file_path)
 events = f["events;1"] if "events;1" in f.keys() else f

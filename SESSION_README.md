@@ -13,183 +13,187 @@
 ## File Paths
 
 - Input: `/eos/user/m/mlevere/ttThreshold-analysis/localSamples/`
-- Output: `/eos/user/m/mlevere/ttThreshold-analysis/outputs/treemaker/WbWb/hadronic_WW/`
-- `inspect_du.py` reads gen-level quark/W matching output
-- `inspect_jets.py` reads reco jet + matching output
-- `qq_histplot.py` plots gen and reco W mass candidates
+- Main output: `/eos/user/m/mlevere/ttThreshold-analysis/outputs/treemaker/WbWb/hadronic_WW_new_matching/`
+- Sigma tuning output: `/eos/user/m/mlevere/ttThreshold-analysis/outputs/treemaker/WbWb/hadronic_WW_sigma_tuning/`
+- Matching comparison outputs: `hadronic_WW_greedy/`, `hadronic_WW_chi2_dR/`, `hadronic_WW_chi2_etaphi/`
 
 ---
 
-## Current State of `examples/functions.h`
+## Treemakers
 
-**`TwoParticleGroups` struct:**
-```cpp
-struct TwoParticleGroups {
-    int high_mass_idx = -1;
-    int low_mass_idx  = -1;
-};
+| File | Output dir | Matching used for W reco |
+|---|---|---|
+| `treemaker_WW.py` | `hadronic_WW_new_matching` | chi2 η/φ (primary) |
+| `treemaker_WW_greedy.py` | `hadronic_WW_greedy` | greedy ΔR |
+| `treemaker_WW_chi2_dR.py` | `hadronic_WW_chi2_dR` | chi2 ΔR (min Σ ΔR²) |
+| `treemaker_WW_chi2_etaphi.py` | `hadronic_WW_chi2_etaphi` | chi2 η/φ (tuned σ) |
+| `treemaker_WW _sigma_tunning.py` | `hadronic_WW_sigma_tuning` | chi2 η/φ — minimal branches for sigma tuning only |
+
+Run all matching variants:
+```bash
+bash run_matching_criteria.sh [nevents]
 ```
-
-**`OnOffidx` struct:**
-```cpp
-struct OnOffidx {
-    ROOT::VecOps::RVec<int> on_shell_idx;
-    ROOT::VecOps::RVec<int> off_shell_idx;
-    double on_shell_mass  = 0.0;
-    double off_shell_mass = 0.0;
-    ROOT::VecOps::RVec<int> on_shell_flavor;
-    ROOT::VecOps::RVec<int> off_shell_flavor;
-    int match_truth = 0;
-};
-```
-
-**`JetToQuarkInfo` struct:**
-```cpp
-struct JetToQuarkInfo {
-    ROOT::VecOps::RVec<int> idx;        // per jet: matched quark index (jet-indexed)
-    ROOT::VecOps::RVec<double> delta_Rs; // ΔR of each match in greedy order (NOT jet-indexed)
-    int under_min_delR = 0;             // 1 if last match had ΔR < delR_constraint (good)
-};
-```
-
-**`DijetInfo` struct:**
-```cpp
-struct DijetInfo {
-    ROOT::VecOps::RVec<double> masses;                        // 6 pairwise masses
-    ROOT::VecOps::RVec<ROOT::VecOps::RVec<size_t>> pair_idxs; // [0]=first jet, [1]=second jet per pair
-};
-```
-
-**`get_mc`** — retrieves `MCParticleData` objects by index from the Particle collection.
-
-**`get_on_and_off_shell_WW_160ecm`** — sorts two hard Ws by mass, momentum-matches back to Particle. Returns `TwoParticleGroups`.
-
-**`get_pair_masses`** — 6 gen quark pair invariant masses. Energy computed as `sqrt(|p|²+m²)`.
-
-**`get_decaying_W_idx`** — walks W decay chain (depth ≤ 20) to find the W with quark daughters.
-
-**`compare_pair_mass_to_w`** — finds which of 6 pairs is closest to on-shell W mass, fills `OnOffidx`. `match_truth=1` if best pair uses positions 0,1 (on-shell W's quarks).
-
-**`MatchJetsToQuarks`** — greedy minimum-ΔR matching of reco jets to gen quarks (`RVec<TLorentzVector>` both). `delR_constraint=0.1`. Returns `JetToQuarkInfo`:
-- `.idx[j]` = quark index matched to jet j (jet-indexed, 0-3)
-- `.delta_Rs` = ΔR values in greedy selection order (NOT jet-indexed — `delta_Rs[0]` = best global match first)
-- `.under_min_delR = 1` if worst (last) match had ΔR < constraint (good match flag)
-
-**`all_invariant_masses_and_pair_idxs`** — computes all 6 pairwise invariant masses from `RVec<TLorentzVector>`. Returns `DijetInfo` with masses and `pair_idxs` in same format as `Combinations()` output.
-
-**`transform_pair_idxs`** — maps jet positions in `pair_idxs` to quark positions via `matched_jets_to_q_idx`, so `dijet_pairs_idxs` can be passed to `compare_pair_mass_to_w`.
 
 ---
 
-## Current State of `treemaker_WW.py`
+## Sigma Tuning
+
+Sigmas for `JtoQ_ChiSquared_eta_phi` were iteratively tuned using truth-matched events:
+
+| Parameter | Greedy-derived | Converged (fitted) |
+|---|---|---|
+| `SIGMA_ETA` | 0.3483 | **0.0440** |
+| `SIGMA_PHI` | 0.3940 | **0.0412** |
+| ratio σ_η/σ_φ | 0.884 | **1.068** |
+
+Tuning workflow:
+```bash
+bash tune_sigmas.sh [nevents]   # automated iteration
+# or manually:
+fccanalysis run "treemaker_WW _sigma_tunning.py" --nevents 5000
+python fit_sigmas.py             # prints new sigma values
+```
+
+Key note: the chi2 η/φ distributions for correct pairings peak around χ²~4–12 (not near 0), which is correct for 8 DOF (4 jets × 2 observables) with calibrated sigmas.
+
+---
+
+## `examples/functions.h` — Current Structs and Functions
+
+### Matching structs
+
+**`JtoQ_dR_Info`** — returned by `JtoQ_ChiSquared_deltaR`:
+```cpp
+struct JtoQ_dR_Info {
+    RVec<int> idx;
+    RVec<double> delta_Rs;
+    int under_min_delR = 0;
+    double best_chi2 = 0.0;
+    double second_best_chi2 = 0.0;
+    double third_best_chi2 = 0.0;
+};
+```
+
+**`JtoQ_etaphi_Info`** — returned by `JtoQ_ChiSquared_eta_phi`:
+```cpp
+struct JtoQ_etaphi_Info {
+    RVec<int> idx;
+    RVec<double> delta_Rs, delta_etas, delta_phis;
+    int under_min_delR = 0;
+    double best_chi2 = 0.0;
+    double second_best_chi2 = 0.0;
+    double third_best_chi2 = 0.0;
+};
+```
+
+### Key functions
+
+**`MatchJetsToQuarks(jets, quarks, delR_constraint)`** — greedy min-ΔR bijection. Returns `JetToQuarkInfo` with `.idx` jet-indexed, `.delta_Rs` in greedy selection order.
+
+**`JtoQ_ChiSquared_deltaR(jets, quarks, sigmas, delR_constraint)`** — exhaustive 4!=24 permutation search minimising Σ(ΔR/σ)². Tracks best/2nd/3rd chi2. `sigmas` has one entry (one observable per jet).
+
+**`JtoQ_ChiSquared_eta_phi(jets, quarks, sigmas, delR_constraint)`** — exhaustive permutation search minimising Σ[(Δη/σ_η)²+(Δφ/σ_φ)²]. Tracks best/2nd/3rd chi2. `sigmas = {sigma_eta, sigma_phi}`.
+
+**`all_invariant_masses_and_pair_idxs(jets)`** — all 6 pairwise jet masses + jet-position pair indices. Returns `DijetInfo`.
+
+**`transform_pair_idxs(pair_idxs, jet_to_quark)`** — maps jet-position pairs → quark-position pairs for use with `compare_pair_mass_to_w`.
+
+**`compare_pair_mass_to_w(masses, quark_idxs, pairs, particles, w_idx)`** — finds pair closest to on-shell W mass. `match_truth=1` if winning pair uses quark positions 0,1 (on-shell quarks). Returns `OnOffidx`.
+
+**`get_decaying_W_idx`** — walks W→W copies to find the W with quark daughters.
+
+---
+
+## `treemaker_WW.py` — Current State
 
 ### Settings
-- `channel = "hadronic"`, `saveExclJets = True`, `ecm = 160`, `nJets = 4`
-- Output: `/eos/user/m/mlevere/ttThreshold-analysis/outputs/treemaker/WbWb/hadronic_WW/`
-
-### Filters (in order)
-1. `HardWs_all.size() == 2`
-2. Hadronic channel filter (isolated lepton veto: `muons + electrons == 0`)
-3. Fully hadronic: both on-shell and off-shell quark channels non-empty
-4. Valid W pairing: `Candidate_on/off_shell_W_qq_p_idxs.size() > 0`
-5. **`matched_jets_to_q_under_min_delR == 1`** — all jets matched within ΔR < 0.1
+- `SIGMA_ETA = 0.0440`, `SIGMA_PHI = 0.0412` — converged from sigma tuning
+- `channel = "hadronic"`, `ecm = 160`, `nJets = 4`
+- Output: `hadronic_WW_new_matching/`
 
 ### Gen-level pipeline
-- `Ws_on_and_off_shell` → `W_on/off_shell_idx`, `W_on/off_shell_decay_idx`
+- Sort hard Ws by mass → `W_on/off_shell_idx`, `W_on/off_shell_decay_idx`
 - 15-channel quark loop → hadronic filter → `on/off_shell_quark_idxs`
-- `All_W_quarks_idx` = Concatenate(on, off) — size 4, order [on_q1, on_q2, off_q1, off_q2]
-- `all_W_quarks_obj` / `all_W_quarks_tlv` — MCParticleData and TLorentzVector for 4 quarks
-- `Mass_qq_pairs` — 6 gen quark pair masses
-- `Candidate_W_qq_pairs` → `Candidate_on/off_shell_W_qq_mass`, `_p_idxs`, `_flavor`, `W_qq_match_truth`
+- `All_W_quarks_idx` = Concatenate(on, off) → **[on_q1, on_q2, off_q1, off_q2]** (critical ordering)
+- `Mass_qq_pairs` → `Candidate_W_qq_pairs` → `Candidate_on/off_shell_W_qq_mass`, `W_qq_match_truth`
 
 ### Reco-level pipeline
-- Lepton subtraction → `ReconstructedParticlesNoMuNoEl`
-- **Exclusive jets** (ee-kt, N=4): `ExclusiveJetClusteringHelper`
-  - `jets_p4` — `RVec<TLorentzVector>`, uproot: `jets[j]["fP"]["fX/fY/fZ"]`, `["fE"]`
-  - Scalar branches: `jet_p`, `jet_e`, `jet_mass`, `jet_phi`, `jet_theta`, `jet_nconst`, `event_njet`
-- **Inclusive jets** (anti-kT R=0.5, pT>10 GeV): `InclusiveJetClusteringHelper` → `jets_R5_*`
+- Lepton subtraction → exclusive ee-kt N=4 jet clustering → `jets_p4`
+- **Greedy matching** (for diagnostics/delR_study):
+  - `matched_jets_to_q` → `matched_jets_to_q_idx`, `simple_jet_{1-4}_deltaR/eta/phi`
+- **Chi2 ΔR matching** (sigma={0.05,0.05,0.05,0.05}):
+  - `chi2_matched_jets_to_q_R` → `chi2_R_idx`, `chi2_R_best/second/third_best_chi2`, `chi2_R_delta_Rs`
+- **Chi2 η/φ matching** (primary, tuned sigmas):
+  - `chi2_matched_jets_to_q_etaphi` → `chi2_etaphi_idx`, `chi2_etaphi_best/second/third_best_chi2`, `chi2_etaphi_delta_Rs/etas/phis`
+- **W reconstruction** (uses `chi2_etaphi_idx`):
+  - `dijet_pairs_as_quark_idx` = `transform_pair_idxs(dijet_pairs_idxs, chi2_etaphi_idx)`
+  - `Candidate_reco_W_jj_pairs` → `Candidate_reco_on/off_shell_W_jj_mass`, `reco_W_jj_match_truth`
 
-### Jet–quark matching
-```python
-df.Define("matched_jets_to_q",
-    "FCCAnalyses::ZHfunctions::MatchJetsToQuarks(jets_p4, all_W_quarks_tlv, 0.1)")
-df.Define("matched_jets_to_q_idx",            "matched_jets_to_q.idx")
-df.Define("matched_jets_to_q_under_min_delR", "matched_jets_to_q.under_min_delR")
-df.Define("matched_jets_to_q_delta_Rs",       "matched_jets_to_q.delta_Rs")
-# per-iteration ΔR (greedy order):
-for i in range(4):
-    df.Define(f"simple_jet_{i}_deltaR", f"matched_jets_to_q_delta_Rs[{i}]")
-df.Filter("matched_jets_to_q_under_min_delR == 1", "all jets matched within delR")
-```
-
-### Dijet masses and reco W reconstruction
-```python
-df.Define("dijet_info",   "FCCAnalyses::ZHfunctions::all_invariant_masses_and_pair_idxs(jets_p4)")
-df.Define("dijet_masses", "dijet_info.masses")            # RVec<double> size 6
-df.Define("dijet_pairs_idxs",  "dijet_info.pair_idxs")   # RVec<RVec<size_t>> — NOT saveable
-df.Define("dijet_pair_idx_a",  "dijet_info.pair_idxs[0]") # RVec<size_t> — saveable
-df.Define("dijet_pair_idx_b",  "dijet_info.pair_idxs[1]") # RVec<size_t> — saveable
-df.Define("dijet_pairs_as_quark_idx",
-    "FCCAnalyses::ZHfunctions::transform_pair_idxs(dijet_pairs_idxs, matched_jets_to_q_idx)")
-df.Define("Candidate_reco_W_jj_pairs",
-    "compare_pair_mass_to_w(dijet_masses, All_W_quarks_idx, dijet_pairs_as_quark_idx, Particle, W_on_shell_decay_idx)")
-# Extracted:
-df.Define("Candidate_reco_on/off_shell_W_jj_mass")
-df.Define("Candidate_reco_on/off_shell_W_jj_p_idxs")
-df.Define("Candidate_reco_on/off_shell_W_jj_flavor")
-df.Define("reco_W_jj_match_truth")
-```
-
-### Key conventions / gotchas
+### Key conventions
 
 | Thing | Detail |
 |---|---|
-| `delta_Rs` ordering | Greedy iteration order, NOT jet order — `delta_Rs[0]` = smallest global ΔR |
-| `matched_jets_to_q_idx` | Jet-indexed — `idx[j]` = quark matched to jet j |
-| `under_min_delR = 1` | Worst match had ΔR < constraint (GOOD) — filter `== 1` keeps well-matched |
-| `delR_constraint` | Currently 0.1 in treemaker call |
-| `jets_p4` uproot | `jets[j]["fP"]["fX/fY/fZ"]` for px/py/pz, `["fE"]` for energy |
-| `dijet_pairs_idxs` | `RVec<RVec<size_t>>` — intermediate only, not saveable |
-| `transform_pair_idxs` | Maps jet positions → quark positions so `compare_pair_mass_to_w` works on reco jets |
-| `all_W_quarks_tlv` | Stored unsplit — not readable field-by-field in uproot; use `all_W_quarks_obj` fields |
-| Quark order in `All_W_quarks_idx` | [on_q1, on_q2, off_q1, off_q2] — indices 0,1 = on-shell W |
-| ee-kt exclusive clustering | Forces exactly N=4 jets; different from anti-kT inclusive |
+| `All_W_quarks_idx` ordering | [on_q1, on_q2, off_q1, off_q2] — positions 0,1 = on-shell |
+| `match_truth` check | `pos1 < 2 && pos2 < 2` — W-pair level, not individual jet-quark |
+| chi2 η/φ scale | χ² ~ 4–12 for correct pairings (8 DOF, calibrated sigmas) — NOT near 0 |
+| chi2 ΔR scale | χ² = Σ(ΔR/0.05)² — completely different scale from η/φ |
+| Sentinel value | `-999.0` / `RVec<double>(4, -999.0)` for inactive truth-split branches |
 
 ---
 
-## Inspect Scripts
+## Analysis Scripts
 
-**`inspect_du.py`** — gen-level W/quark matching per event.
+**`run_matching_criteria.sh`** — runs all 3 matching treemakers sequentially.
 
-**`inspect_jets.py`** — per event prints:
-- Truth W masses, gen quark pair masses, reco dijet W masses (3 lines for comparison)
-- Gen quarks: idx, PDG, E, p, m
-- Reco jets: E, p, m + matched quark, W-side, PDG
-- `under_min_delR` flag
-- All 6 dijet pair masses with jet indices
+**`fit_sigmas.py`** — reads sigma tuning ntuple, fits Gaussian to Δη/Δφ from truth-matched events, prints new sigma values + diagnostic ratios (mean(|Δx|)/σ, std).
 
-**`qq_histplot.py`** — histograms:
-- `w_mass_gen_qq.png` — gen on/off-shell
-- `w_mass_reco_jj.png` — reco on/off-shell
-- `w_mass_on_shell_gen_vs_reco.png` — gen vs reco on-shell comparison
-- `w_mass_off_shell_gen_vs_reco.png` — gen vs reco off-shell comparison
+**`tune_sigmas.sh`** — automated sigma tuning loop (runs treemaker + fit_sigmas iteratively until convergence).
+
+**`delR_study.py`** — Rayleigh+uniform MLE fit to per-jet ΔR distributions from greedy matching.
+
+**`qq_histplot.py`** — reads from `hadronic_WW_new_matching`. Plots:
+- Gen/reco W mass distributions (on/off-shell, gen vs reco comparisons)
+- Chi2 η/φ: best vs 2nd vs 3rd
+- Chi2 ΔR: best vs 2nd vs 3rd
+- Comparison: ΔR vs η/φ best/2nd chi2 overlaid
+- `events_passing_chi2_cut(data, threshold)` — filter to events with best chi2 < threshold
+
+**`compare_matching_criteria.py`** — reads from all 3 matching output dirs, produces:
+- `match_truth_rate.png` — correct pairing % bar chart
+- Reco W mass overlaid for all 3 methods
+- ΔR distributions by truth (matched/unmatched)
+- Chi2 distributions per method
+- 2D Δη vs Δφ (correct vs wrong pairings)
+
+**`inspect_jets.py`** — per-event printout (reads from `hadronic_WW_new_matching`).
 
 ---
 
 ## Running
 
 ```bash
-fccanalysis run --nevents=100 treemaker_WW.py
-python inspect_du.py
-python inspect_jets.py
+# Main analysis
+fccanalysis run treemaker_WW.py
+
+# All matching variants
+bash run_matching_criteria.sh 5000
+
+# Sigma tuning
+bash tune_sigmas.sh 5000
+
+# Plotting
 python qq_histplot.py
+python compare_matching_criteria.py
+python delR_study.py
+python fit_sigmas.py
 ```
 
 ---
 
-## What Needs Doing Next
+## Current Status
 
-1. **Validate** matching quality — check `delta_Rs` distribution and `under_min_delR` rate; tune `delR_constraint` if needed
-2. **Run `qq_histplot.py`** to compare gen vs reco W mass distributions
-3. **Check `reco_W_jj_match_truth`** rate vs `W_qq_match_truth` — quantifies how often reco pairing agrees with gen truth
-4. **Run on full sample** once validation passes
+- Sigma tuning converged: σ_η=0.0440, σ_φ=0.0412 (ratio 1.068)
+- Three matching strategies implemented and compared via `compare_matching_criteria.py`
+- chi2 η/φ and chi2 ΔR both track best/2nd/3rd best chi2 values
+- `reco_W_jj_match_truth` validates W-pair level correctness (not individual jet-quark)
+- Heavy tails in Δη/Δφ from truth-matched events are partly due to within-pair jet swaps (both correct assignments produce same W-pair match_truth)
