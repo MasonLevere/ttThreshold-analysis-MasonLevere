@@ -10,28 +10,18 @@ out_dir     = os.path.join("plots", script_name)
 os.makedirs(out_dir, exist_ok=True)
 
 process  = "p8_ee_WW_ecm160"
-split    = "test"   # "train" or "test"
-matching = "new"     # "new" = chi2 (treemaker_WW_new_matching), "old" = greedy (treemaker_WW)
-
-treemaker_dir = "hadronic_WW_new_matching" if matching == "new" else "hadronic_WW"
-file_path = f"/eos/user/m/mlevere/ttThreshold-analysis/outputs/treemaker/WbWb/{treemaker_dir}/{process}.root"
+split    = "all"    # "train", "test", or "all"
+file_path = f"/eos/user/m/mlevere/ttThreshold-analysis/outputs/treemaker/WbWb/hadronic_WW_sigma_tuning/{process}.root"
 
 f      = uproot.open(file_path)
 events = f["events"]
 
 branches = [
-
     "W_on_shell_mass",
     "W_off_shell_mass",
     "Candidate_reco_on_shell_W_jj_mass",
     "Candidate_reco_off_shell_W_jj_mass",
-    'chi2_etaphi_best_chi2',
-    'chi2_etaphi_second_best_chi2',
-    'chi2_etaphi_third_best_chi2',
-    'chi2_R_best_chi2',
-    'chi2_R_second_best_chi2',
-    'chi2_R_third_best_chi2',
-    'reco_W_jj_match_truth'
+    "reco_W_jj_match_truth",
 ]
 
 data = events.arrays(branches, library="np")

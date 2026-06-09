@@ -125,7 +125,7 @@ outputDir   = "/eos/user/m/mlevere/ttThreshold-analysis/outputs/treemaker/WbWb/{
 
 
 # additional/costom C++ functions, defined in header files (optional)
-includePaths = ["examples/functions.h"]
+includePaths = ["examples/functions.h", "examples/BWPairing.h"]
 
 ## latest particle transformer model, trained on 9M jets in winter2023 samples
 model_name = "fccee_flavtagging_edm4hep_wc" #"fccee_flavtagging_edm4hep_wc_v1"
@@ -205,6 +205,8 @@ w_lepton_decay_names = []
 SIGMA_ETA = 0.0505
 SIGMA_PHI = 0.0529
 
+SIGMA_W_ON_SHELL = 5.3665
+
 chi2_cut = 100
 
 
@@ -218,7 +220,11 @@ all_branches = [
     "matched_jets_to_q_idx", "matched_jets_to_q_under_min_delR",
     "dijet_masses", "dijet_pair_idx_a", "dijet_pair_idx_b",
     "Candidate_on_shell_W_qq_mass", "Candidate_off_shell_W_qq_mass",
+    "False_mixed_perm1_mass", "False_mixed_perm2_mass",
     "Candidate_reco_on_shell_W_jj_mass", "Candidate_reco_off_shell_W_jj_mass",
+    "Candidate_reco_off_shell_W_jj_best_chi2",
+    "Candidate_reco_off_shell_W_jj_second_best_chi2",
+    "Candidate_reco_off_shell_W_jj_third_best_chi2",
     "reco_W_jj_match_truth",
 
     # --- delR_study.py ---
@@ -534,17 +540,36 @@ class RDFanalysis:
                     f"ROOT::VecOps::RVec<edm4hep::MCParticleData>{{}}"
                 )
 
+                # mixing for incorrect pairs to get mass
                 df = df.Define(
-                    f"W_on_shell_to_{q1}_{q2}_quarks_idxs",
-                    f"W_on_shell_to_{q1}_{q2}_idxs.size() > 2 ? "
-                    f"ROOT::VecOps::Take(W_on_shell_to_{q1}_{q2}_idxs, {{1, 2}}) : "
-                    f"ROOT::VecOps::RVec<int>{{}}"
+                    f"False_mixed_{q1}_{q2}_quarks",
+                    f"(W_on_shell_to_{q1}_{q2}_objs.size() > 2 && W_off_shell_to_{q1}_{q2}_objs.size() > 2) ? "
+                    f"FCCAnalyses::ZHfunctions::MixQuarkPairsAndGetMass("
+                    f"ROOT::VecOps::Take(W_on_shell_to_{q1}_{q2}_objs, ROOT::VecOps::RVec<long long>{{1, 2}}), "
+                    f"ROOT::VecOps::Take(W_off_shell_to_{q1}_{q2}_objs, ROOT::VecOps::RVec<long long>{{1, 2}})) : "
+                    f"FCCAnalyses::ZHfunctions::MixQuarkPairsInfo{{}}"
                 )
 
+                df = df.Define(
+                    f"False_mixed_{q1}_{q2}_perm1_mass",
+                    f"False_mixed_{q1}_{q2}_quarks.perm1_mass"
+                )
+                df = df.Define(
+                    f"False_mixed_{q1}_{q2}_perm2_mass",
+                    f"False_mixed_{q1}_{q2}_quarks.perm2_mass"
+                )
+            
                 df = df.Define(
                     f"W_off_shell_to_{q1}_{q2}_quarks_idxs",
                     f"W_off_shell_to_{q1}_{q2}_idxs.size() > 2 ? "
                     f"ROOT::VecOps::Take(W_off_shell_to_{q1}_{q2}_idxs, {{1, 2}}) : "
+                    f"ROOT::VecOps::RVec<int>{{}}"
+                )
+
+                df = df.Define(
+                    f"W_on_shell_to_{q1}_{q2}_quarks_idxs",
+                    f"W_on_shell_to_{q1}_{q2}_idxs.size() > 2 ? "
+                    f"ROOT::VecOps::Take(W_on_shell_to_{q1}_{q2}_idxs, {{1, 2}}) : "
                     f"ROOT::VecOps::RVec<int>{{}}"
                 )
 
@@ -642,6 +667,18 @@ class RDFanalysis:
         df = df.Define(f"Candidate_off_shell_W_qq_p_flavor", f"Candidate_W_qq_pairs.off_shell_flavor")
 
         df = df.Define(f"W_qq_match_truth", f"Candidate_W_qq_pairs.match_truth")
+
+        # collect false-mixed pair masses from the active quark channel
+        perm1_mass_expr = "ROOT::VecOps::RVec<double>{}"
+        for q1, q2 in reversed(channel_list):
+            perm1_mass_expr = f"(False_mixed_{q1}_{q2}_perm1_mass.size() > 0 ? False_mixed_{q1}_{q2}_perm1_mass : {perm1_mass_expr})"
+
+        perm2_mass_expr = "ROOT::VecOps::RVec<double>{}"
+        for q1, q2 in reversed(channel_list):
+            perm2_mass_expr = f"(False_mixed_{q1}_{q2}_perm2_mass.size() > 0 ? False_mixed_{q1}_{q2}_perm2_mass : {perm2_mass_expr})"
+
+        df = df.Define("False_mixed_perm1_mass", perm1_mass_expr)
+        df = df.Define("False_mixed_perm2_mass", perm2_mass_expr)
 
 
         for lep, ids in lepton_pdg.items():
@@ -876,11 +913,18 @@ class RDFanalysis:
         )
 
 
+        # old none chi squared version
+        # df = df.Define(
+        #     f"Candidate_reco_W_jj_pairs",
+        #     f"(dijet_masses.size() == 6) ? "  #dijet mass   # indexs of quarks (so need to point jet_to_quark_idxs to get their idxs first)    # modified dijet_pairs_idxs (need to check these should be pointing to jets which need to point to quarks)
+        #     f"FCCAnalyses::ZHfunctions::compare_pair_mass_to_w(dijet_masses, All_W_quarks_idx, dijet_pairs_as_quark_idx, Particle, W_on_shell_decay_idx) : "
+        #     f"FCCAnalyses::ZHfunctions::OnOffidx{{}}"
+        # )
 
         df = df.Define(
             f"Candidate_reco_W_jj_pairs",
             f"(dijet_masses.size() == 6) ? "  #dijet mass   # indexs of quarks (so need to point jet_to_quark_idxs to get their idxs first)    # modified dijet_pairs_idxs (need to check these should be pointing to jets which need to point to quarks)
-            f"FCCAnalyses::ZHfunctions::compare_pair_mass_to_w(dijet_masses, All_W_quarks_idx, dijet_pairs_as_quark_idx, Particle, W_on_shell_decay_idx) : "
+            f"FCCAnalyses::ZHfunctions::chi2_compare_pair_mass_to_w(dijet_masses, All_W_quarks_idx, dijet_pairs_as_quark_idx, Particle, {SIGMA_W_ON_SHELL}, W_on_shell_decay_idx) : "
             f"FCCAnalyses::ZHfunctions::OnOffidx{{}}"
         )
 
@@ -890,7 +934,10 @@ class RDFanalysis:
         df = df.Define("Candidate_reco_off_shell_W_jj_mass",   "Candidate_reco_W_jj_pairs.off_shell_mass")
         df = df.Define("Candidate_reco_on_shell_W_jj_flavor",  "Candidate_reco_W_jj_pairs.on_shell_flavor")
         df = df.Define("Candidate_reco_off_shell_W_jj_flavor", "Candidate_reco_W_jj_pairs.off_shell_flavor")
-        df = df.Define("reco_W_jj_match_truth",                "Candidate_reco_W_jj_pairs.match_truth")
+        df = df.Define("Candidate_reco_off_shell_W_jj_best_chi2",        "Candidate_reco_W_jj_pairs.best_chi2")
+        df = df.Define("Candidate_reco_off_shell_W_jj_second_best_chi2", "Candidate_reco_W_jj_pairs.second_best_chi2")
+        df = df.Define("Candidate_reco_off_shell_W_jj_third_best_chi2",  "Candidate_reco_W_jj_pairs.third_best_chi2")
+        df = df.Define("reco_W_jj_match_truth",                          "Candidate_reco_W_jj_pairs.match_truth")
 
         df = df.Define("chi2_best_matched",
             "reco_W_jj_match_truth == 1 ? chi2_etaphi_best_chi2 : -999.0")

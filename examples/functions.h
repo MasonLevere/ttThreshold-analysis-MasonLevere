@@ -418,6 +418,8 @@ struct OnOffidx {
     ROOT::VecOps::RVec<int> on_shell_flavor;
     ROOT::VecOps::RVec<int> off_shell_flavor;
     double best_chi2 = 0.0;
+    double second_best_chi2 = 0.0;
+    double third_best_chi2 = 0.0;
     int match_truth = 0;
 };
 
@@ -489,19 +491,27 @@ OnOffidx chi2_compare_pair_mass_to_w(
     double w_var,
     int w_idx)
 {
-    double best_chi2 = 999999;
+    double best_chi2        = 999999;
+    double second_best_chi2 = 999999;
+    double third_best_chi2  = 999999;
     int best_idx = -1;
-    double w_mass = particles[w_idx].mass;
+    //double w_mass = particles[w_idx].mass;
+    double w_mass = 80.419;
     OnOffidx result;
 
-    // for now, consider the distribution of only the mass we are choosing for
-    // do a chi squared on only one variable, the mass of the w boson we are interested in
     for (size_t i = 0; i < masses.size(); i++) {
         double chi2 = ((masses[i] - w_mass) * (masses[i] - w_mass)) / (w_var*w_var);
 
         if (chi2 < best_chi2) {
+            third_best_chi2  = second_best_chi2;
+            second_best_chi2 = best_chi2;
             best_chi2 = chi2;
             best_idx = i;
+        } else if (chi2 < second_best_chi2) {
+            third_best_chi2  = second_best_chi2;
+            second_best_chi2 = chi2;
+        } else if (chi2 < third_best_chi2) {
+            third_best_chi2 = chi2;
         }
     }
 
@@ -511,7 +521,9 @@ OnOffidx chi2_compare_pair_mass_to_w(
     result.on_shell_idx = ROOT::VecOps::RVec<int>{quark_idxs[pos1], quark_idxs[pos2]};
     result.on_shell_flavor = ROOT::VecOps::RVec<int>{particles[quark_idxs[pos1]].PDG, particles[quark_idxs[pos2]].PDG};
     result.on_shell_mass = masses[best_idx];
-    result.best_chi2 = best_chi2
+    result.best_chi2        = best_chi2;
+    result.second_best_chi2 = second_best_chi2;
+    result.third_best_chi2  = third_best_chi2;
 
     // positions 0,1 in quark_idxs are the on-shell W's quarks (Concatenate order)
     result.match_truth = ((pos1 < 2) && (pos2 < 2)) ? 1 : 0;
@@ -855,6 +867,68 @@ JtoQ_etaphi_Info JtoQ_ChiSquared_eta_phi(
             result.third_best_chi2  = chi2;
         }
     }
+
+    return result;
+}
+
+
+// want to look at ""incorrect" pairs of Ws, so we want to mix the quarks that are clustered from W1 and W2 and get their permutations, and ultimately their masses
+
+// ROOT::VecOps::RVec<double> get_pair_masses(
+//     const ROOT::VecOps::RVec<int>& quark_idxs,
+//     const ROOT::VecOps::RVec<ROOT::VecOps::RVec<size_t>>& pairs,
+//     const ROOT::VecOps::RVec<edm4hep::MCParticleData>& particles)
+
+
+struct MixQuarkPairsInfo {
+    ROOT::VecOps::RVec<ROOT::VecOps::RVec<edm4hep::MCParticleData>> perm1;
+    ROOT::VecOps::RVec<ROOT::VecOps::RVec<edm4hep::MCParticleData>> perm2;
+    ROOT::VecOps::RVec<double> perm1_mass;
+    ROOT::VecOps::RVec<double> perm2_mass;
+};
+
+
+//inputs are randomly mixed because the quarks from each W are sorted by how they are identified by their PDG,
+//  so we are biased more towards certain quarks than others without random mixing
+MixQuarkPairsInfo MixQuarkPairsAndGetMass(
+    const ROOT::VecOps::RVec<edm4hep::MCParticleData>& quarks_from_W1,
+    const ROOT::VecOps::RVec<edm4hep::MCParticleData>& quarks_from_W2)
+{
+    MixQuarkPairsInfo result;
+    if (quarks_from_W1.size() < 2 || quarks_from_W2.size() < 2) return result;
+
+    // randomly flip ordering of each W's quarks independently to remove flavor bias
+    thread_local std::mt19937 rng(std::random_device{}());
+    std::uniform_int_distribution<int> coin(0, 1);
+    bool flip_W1 = coin(rng);
+    bool flip_W2 = coin(rng);
+
+    const auto& w1_q0 = flip_W1 ? quarks_from_W1[1] : quarks_from_W1[0];
+    const auto& w1_q1 = flip_W1 ? quarks_from_W1[0] : quarks_from_W1[1];
+    const auto& w2_q0 = flip_W2 ? quarks_from_W2[1] : quarks_from_W2[0];
+    const auto& w2_q1 = flip_W2 ? quarks_from_W2[0] : quarks_from_W2[1];
+
+    auto pair_inv_mass = [](const edm4hep::MCParticleData& a, const edm4hep::MCParticleData& b) -> double {
+        double E_a = std::sqrt(a.mass*a.mass + a.momentum.x*a.momentum.x + a.momentum.y*a.momentum.y + a.momentum.z*a.momentum.z);
+        double E_b = std::sqrt(b.mass*b.mass + b.momentum.x*b.momentum.x + b.momentum.y*b.momentum.y + b.momentum.z*b.momentum.z);
+        double E  = E_a + E_b;
+        double px = a.momentum.x + b.momentum.x;
+        double py = a.momentum.y + b.momentum.y;
+        double pz = a.momentum.z + b.momentum.z;
+        return std::sqrt(std::max(0.0, E*E - px*px - py*py - pz*pz));
+    };
+
+    // mixed pairing 1: w1_q0+w2_q0, w1_q1+w2_q1
+    result.perm1.push_back({w1_q0, w2_q0});
+    result.perm2.push_back({w1_q1, w2_q1});
+    result.perm1_mass.push_back(pair_inv_mass(w1_q0, w2_q0));
+    result.perm2_mass.push_back(pair_inv_mass(w1_q1, w2_q1));
+
+    // mixed pairing 2: w1_q0+w2_q1, w1_q1+w2_q0
+    result.perm1.push_back({w1_q0, w2_q1});
+    result.perm2.push_back({w1_q1, w2_q0});
+    result.perm1_mass.push_back(pair_inv_mass(w1_q0, w2_q1));
+    result.perm2_mass.push_back(pair_inv_mass(w1_q1, w2_q0));
 
     return result;
 }

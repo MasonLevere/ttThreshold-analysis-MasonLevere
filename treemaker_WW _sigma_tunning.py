@@ -204,6 +204,7 @@ w_lepton_decay_names = []
 # Update these each iteration and rerun; fit_sigmas.py reads the output and reports new values.
 SIGMA_ETA = 0.0505
 SIGMA_PHI = 0.0529
+SIGMA_W_ON_SHELL = 5.3665
 
 # Only branches needed for sigma fitting — keeps the output ntuple small.
 all_branches = [
@@ -214,6 +215,9 @@ all_branches = [
     "deltaEtas_matched",
     "deltaPhis_matched",
     "deltaRs_matched",
+    # --- find_mass_variance.py ---
+    "W_on_shell_mass", "W_off_shell_mass",
+    "Candidate_reco_on_shell_W_jj_mass", "Candidate_reco_off_shell_W_jj_mass",
 ]
 
 
@@ -412,6 +416,8 @@ class RDFanalysis:
 
         df = df.Define("W_on_shell_idx",  "Ws_on_and_off_shell.high_mass_idx")
         df = df.Define("W_off_shell_idx", "Ws_on_and_off_shell.low_mass_idx")
+        df = df.Define("W_on_shell_mass", "Ws_on_and_off_shell.high_mass")
+        df = df.Define("W_off_shell_mass", "Ws_on_and_off_shell.low_mass")
 
          # quark_pdg = {
         #     'd': 1,
@@ -842,10 +848,10 @@ class RDFanalysis:
         df = df.Define(
             f"Candidate_reco_W_jj_pairs",
             f"(dijet_masses.size() == 6) ? "  #dijet mass   # indexs of quarks (so need to point jet_to_quark_idxs to get their idxs first)    # modified dijet_pairs_idxs (need to check these should be pointing to jets which need to point to quarks)
-            f"FCCAnalyses::ZHfunctions::compare_pair_mass_to_w(dijet_masses, All_W_quarks_idx, dijet_pairs_as_quark_idx, Particle, W_on_shell_decay_idx) : "
+            f"FCCAnalyses::ZHfunctions::chi2_compare_pair_mass_to_w(dijet_masses, All_W_quarks_idx, dijet_pairs_as_quark_idx, Particle, {SIGMA_W_ON_SHELL}, W_on_shell_decay_idx) : "
             f"FCCAnalyses::ZHfunctions::OnOffidx{{}}"
         )
-
+        
         df = df.Define("Candidate_reco_on_shell_W_jj_p_idxs",  "Candidate_reco_W_jj_pairs.on_shell_idx")
         df = df.Define("Candidate_reco_off_shell_W_jj_p_idxs", "Candidate_reco_W_jj_pairs.off_shell_idx")
         df = df.Define("Candidate_reco_on_shell_W_jj_mass",    "Candidate_reco_W_jj_pairs.on_shell_mass")

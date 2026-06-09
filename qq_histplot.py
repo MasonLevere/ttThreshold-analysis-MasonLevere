@@ -24,15 +24,20 @@ branches = [
     "W_off_shell_mass",
     "Candidate_on_shell_W_qq_mass",
     "Candidate_off_shell_W_qq_mass",
+    "False_mixed_perm1_mass",
+    "False_mixed_perm2_mass",
     "Candidate_reco_on_shell_W_jj_mass",
     "Candidate_reco_off_shell_W_jj_mass",
+    'Candidate_reco_off_shell_W_jj_best_chi2',
+    'Candidate_reco_off_shell_W_jj_second_best_chi2',
+    'Candidate_reco_off_shell_W_jj_third_best_chi2',
     'chi2_etaphi_best_chi2',
     'chi2_etaphi_second_best_chi2',
     'chi2_etaphi_third_best_chi2',
     'chi2_R_best_chi2',
     'chi2_R_second_best_chi2',
     'chi2_R_third_best_chi2',
-    'reco_W_jj_match_truth'
+    'reco_W_jj_match_truth',
 ]
 
 data = events.arrays(branches, library="np")
@@ -92,7 +97,8 @@ def PlotWMassHist(hists, labels, title='', outfile=None, norm=False, ratio=False
 
         ax_ratio.axhline(1, color='gray', linewidth=0.8, linestyle='--')
         ax_ratio.set_ylabel(f'reco / gen')
-        ax_ratio.set_ylim(0.5, 1.5)
+        ax_ratio.set_ylim(0.1, 100)
+        ax_ratio.set_yscale('log')
 
         # Cosmetics: merge the two panels visually
         ax.set_xlabel('')
@@ -193,13 +199,6 @@ PlotChi2Hist([h_R_best, h_R_2nd, h_R_3rd],
 h_R_best_short = MakeChi2Hist(data['chi2_R_best_chi2'], xmax=500, nbins=50)
 h_etaphi_best_short = MakeChi2Hist(data['chi2_etaphi_best_chi2'], xmax=500, nbins=50)
 
-# gap = second_best - best (always positive by definition)
-chi2_R_gap     = data['chi2_R_second_best_chi2']     - data['chi2_R_best_chi2']
-chi2_etaphi_gap = data['chi2_etaphi_second_best_chi2'] - data['chi2_etaphi_best_chi2']
-
-h_chi2_R_gap     = MakeChi2Hist(chi2_R_gap)
-h_chi2_etaphi_gap = MakeChi2Hist(chi2_etaphi_gap)
-
 # --- Comparison: ΔR vs η/φ for best chi2 ---
 PlotChi2Hist([h_R_best_short, h_etaphi_best_short],
              ['χ² ΔR (best)', 'χ² η/φ (best)'],
@@ -268,7 +267,7 @@ second_best_chi2_R = data['chi2_R_second_best_chi2']
 
 
 # MAIN TUNING
-chosen_chi2_cutoff = 10
+chosen_chi2_cutoff = 100
 cut_on_shell = CutOnChi2Single(best_chi2_ep, data['W_on_shell_mass'], chosen_chi2_cutoff)
 cut_off_shell = CutOnChi2Single(best_chi2_ep, data['W_off_shell_mass'], chosen_chi2_cutoff)
 
@@ -310,7 +309,8 @@ def PlotEffJtoQtoW(best_chi2, chi2_range, model="", point_of_interest=100):
 # thresholds = np.linspace(0, chi2_range, 100)
 # eff = EfficiencyJtoQtoW(best_chi2_ep, thresholds, match_truth=data['reco_W_jj_match_truth'])
 
-PlotEffJtoQtoW(best_chi2_ep, 1000)
+PlotEffJtoQtoW(best_chi2_ep, 1000, model = 'etaphi')
+#PlotEffJtoQtoW()
 
 
 
@@ -320,6 +320,16 @@ PlotChi2Eff(best_chi2_R, second_best_chi2_R, 1000, model="R", point_of_interest=
 
 
 
+
+xmax_mass = 10
+# --- Reco W pair mass chi2 (compare_pair_mass_to_w) ---
+h_reco_w_chi2_best = MakeChi2Hist(data['Candidate_reco_off_shell_W_jj_best_chi2'], xmax=xmax_mass)
+h_reco_w_chi2_2nd  = MakeChi2Hist(data['Candidate_reco_off_shell_W_jj_second_best_chi2'], xmax=xmax_mass)
+h_reco_w_chi2_3rd  = MakeChi2Hist(data['Candidate_reco_off_shell_W_jj_third_best_chi2'], xmax=xmax_mass)
+PlotChi2Hist([h_reco_w_chi2_best, h_reco_w_chi2_2nd, h_reco_w_chi2_3rd],
+             ['best χ²', 'second-best χ²', 'third-best χ²'],
+             title='χ² reco W pair mass — best vs 2nd vs 3rd',
+             outfile=os.path.join(out_dir, 'chi2_reco_w_pair_mass_best_vs_2nd_vs_3rd.png'))
 
 # candidate is the quarks matched to the jets, which was found to have a 100% effeciency on 10,000 evetns, so for
 # now it is a fine metric to see how chi2 cuts stacks up
@@ -333,8 +343,11 @@ PlotWMassHist([h_gen_on, h_gen_off],
               title='Gen-level W pair masses (quark pairing)',
               outfile=os.path.join(out_dir, 'w_mass_gen_qq.png'), norm=True)
 
-cut_on_shell  = CutOnChi2Single(best_chi2_ep, data['Candidate_reco_on_shell_W_jj_mass'],  chosen_chi2_cutoff)
-cut_off_shell = CutOnChi2Single(best_chi2_ep, data['Candidate_reco_off_shell_W_jj_mass'], chosen_chi2_cutoff)
+# cut_on_shell  = CutOnChi2Single(best_chi2_ep, data['Candidate_reco_on_shell_W_jj_mass'],  chosen_chi2_cutoff)
+# cut_off_shell = CutOnChi2Single(best_chi2_ep, data['Candidate_reco_off_shell_W_jj_mass'], chosen_chi2_cutoff)
+
+cut_on_shell = data['Candidate_reco_on_shell_W_jj_mass']
+cut_off_shell = data['Candidate_reco_off_shell_W_jj_mass']
 
 # --- Reco dijet masses ---
 h_reco_on  = MakeWMassHist(cut_on_shell,  xmin=50, xmax=90)
@@ -355,3 +368,23 @@ PlotWMassHist([h_gen_off, h_reco_off],
               ['gen off-shell (qq)', 'reco off-shell (jj)'],
               title='Off-shell W mass: gen vs reco',
               outfile=os.path.join(out_dir, 'w_mass_off_shell_gen_vs_reco.png'), norm=True, ratio=True)
+
+
+
+# --- False mixed W pair masses ---
+# perm1_mass[i] and perm2_mass[i] are the two sides of permutation i;
+# combine both sides so each permutation fills a single histogram
+_mask = np.array([len(x) == 2 for x in data['False_mixed_perm1_mass']])
+_p1_side1 = np.array([x[0] for x in data['False_mixed_perm1_mass'][_mask]])
+_p1_side2 = np.array([x[0] for x in data['False_mixed_perm2_mass'][_mask]])
+_p2_side1 = np.array([x[1] for x in data['False_mixed_perm1_mass'][_mask]])
+_p2_side2 = np.array([x[1] for x in data['False_mixed_perm2_mass'][_mask]])
+
+h_false_perm1 = MakeWMassHist(np.concatenate([_p1_side1, _p1_side2]), xmin=0, xmax=90)
+h_false_perm2 = MakeWMassHist(np.concatenate([_p2_side1, _p2_side2]), xmin=0, xmax=90)
+PlotWMassHist([h_false_perm1, h_false_perm2],
+              ['false mixed perm 1', 'false mixed perm 2'],
+              title='False mixed W pair masses',
+              outfile=os.path.join(out_dir, 'w_mass_false_mixed.png'), norm=True)
+
+# mixed permutations of gen quarks, just to see the distribution
