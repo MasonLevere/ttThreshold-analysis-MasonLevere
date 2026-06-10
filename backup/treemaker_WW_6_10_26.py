@@ -22,7 +22,7 @@ all_processes = {
 
 # One on shell, one off shell WW events
     "p8_ee_WW_ecm160": {
-        "fraction": 0.01,
+        "fraction": 1,
     },
 
 ###FOR foll WW background samples with PS variations xsec values are wrong in the database!!
@@ -211,48 +211,39 @@ SIGMA_PHI = 0.0529
 
 SIGMA_W_ON_SHELL = 5.3665
 
-# refers to detector resolution for gauss in voigt distribution
-sigma = 3.6110261681321907
-
-
 chi2_cut = 100
 
 
 
 all_branches = [
 
-    # --- gen truth ---
+    # --- inspect_jets.py ---
+    "jets_p4",
     "All_W_quarks_idx", "all_W_quarks_obj",
     "HardWs_all_mass",
-    "W_on_shell_mass", "W_off_shell_mass",
+    "dijet_masses", "dijet_pair_idx_a", "dijet_pair_idx_b",
+    "Candidate_on_shell_W_qq_mass", "Candidate_off_shell_W_qq_mass",
+    "False_mixed_perm1_mass", "False_mixed_perm2_mass",
+    "Candidate_reco_on_shell_W_jj_mass", "Candidate_reco_off_shell_W_jj_mass",
+    "Candidate_reco_off_shell_W_jj_best_chi2",
+    "Candidate_reco_off_shell_W_jj_second_best_chi2",
+    "Candidate_reco_off_shell_W_jj_third_best_chi2",
+    "reco_W_jj_match_truth",
 
-    # --- jets ---
-    "jets_p4",
-    "n_reco_jets",
-
-    # --- chi2 jet-quark matching ---
+    # --- qq_histplot.py ---
+    "W_qq_match_truth",
     'chi2_etaphi_best_chi2', 'chi2_etaphi_second_best_chi2', 'chi2_etaphi_third_best_chi2',
     'chi2_etaphi_delta_Rs', 'chi2_etaphi_delta_etas', 'chi2_etaphi_delta_phis',
     'chi2_dR_best_chi2', 'chi2_dR_delta_Rs',
+    'chi2_best_matched', 'chi2_best_unmatched',
+    'chi2_second_best_matched', 'chi2_second_best_unmatched',
+    'deltaRs_matched', 'deltaRs_unmatched',
+    'deltaEtas_matched', 'deltaEtas_unmatched',
+    'deltaPhis_matched', 'deltaPhis_unmatched',
 
-    # --- truth matching ---
-    "gen_pairing_true",
-    "jet1_wlab", "jet2_wlab", "jet3_wlab", "jet4_wlab",
-    "jet1_matched_q_dR", "jet2_matched_q_dR", "jet3_matched_q_dR", "jet4_matched_q_dR",
-    "gen_Wa_mass", "gen_Wb_mass",
-    "reco_matched_Wa_mass", "reco_matched_Wb_mass",
 
-    # --- BW pairing (Voigt) ---
-    "bwpair_pairing", "bwpair_gof_best", "bwpair_prob_best", "bwpair_dgof",
-    "bwpair_gof0", "bwpair_gof1", "bwpair_gof2",
-    "bwpair_prob0", "bwpair_prob1", "bwpair_prob2",
-    "bwpair_ma0", "bwpair_ma1", "bwpair_ma2",
-    "bwpair_mb0", "bwpair_mb1", "bwpair_mb2",
-    "bwpair_correct",
-
-    # --- BW pairing (pure BW, no detector smearing) ---
-    "bwpair_bw_pairing", "bwpair_bw_gof_best", "bwpair_bw_prob_best", "bwpair_bw_dgof",
-    "bwpair_bw_correct",
+    # ---- misc ---
+    "W_on_shell_mass", "W_off_shell_mass",
 
 ]
 
@@ -353,11 +344,11 @@ class RDFanalysis:
 
 
         # returns as particles
-        df = df.Define("all_W_quarks_obj",
+        df = df.Define("gen_quarks",
                     f"FCCAnalyses::WWFunctions::sel_quarks_fromBoson({_boson_pdg})(Particle, Particle0)")
 
         # hadronic cut
-        df = df.Filter("all_W_quarks_obj.size() == 4", f"gen: 4 quarks from 2 {BW_BOSON} (signal)")
+        df = df.Filter("gen_quarks.size() == 4", f"gen: 4 quarks from 2 {BW_BOSON} (signal)")
 
         nJets = 4  # WW → qqqq fully hadronic: 4 quarks → 4 jets
 
@@ -405,16 +396,134 @@ class RDFanalysis:
 
         df = df.Alias("DaughterIndex", "Particle#1.index")
 
+        # there are multiple copies of the W, and we look for the Ws with only status 22, but these copies
+        # are not where the daughters are always stored
+        # the daughters of status-22 can be other ws objects used in pythia8 that reference the same w,
+        # some of which may store the quark daughters, thus we have to have a function that looks for the w with quark daughters
+        
+        # df = df.Define("W_on_shell_decay_idx",
+        #     "FCCAnalyses::ZHfunctions::get_decaying_W_idx(W_on_shell_idx, Particle, DaughterIndex)")
+        # df = df.Define("W_off_shell_decay_idx",
+        #     "FCCAnalyses::ZHfunctions::get_decaying_W_idx(W_off_shell_idx, Particle, DaughterIndex)")
 
         dup_tracker = []
 
 
 
 
+
+        # for q1, id1 in quark_pdg.items():
+
+        #     dup_tracker.append(q1)
+
+        #     for q2, id2 in quark_pdg.items():
+
+        #         if q2 in dup_tracker:
+        #             continue
+
+
+        #         # goes from w idxs to w and q idxs to w and q particle objects
+        #         df = df.Define(
+        #             f"W_on_shell_to_{q1}_{q2}_idxs",
+        #             f"FCCAnalyses::MCParticle::get_indices_MotherByIndex(W_on_shell_decay_idx, {{{id1},{id2}}}, false, true, true, Particle, DaughterIndex)"
+        #         )
+
+        #         df = df.Define(
+        #             f"W_off_shell_to_{q1}_{q2}_idxs",
+        #             f"FCCAnalyses::MCParticle::get_indices_MotherByIndex(W_off_shell_decay_idx, {{{id1},{id2}}}, false, true, true, Particle, DaughterIndex)"
+        #         )
+
+
+        #         # [W, q1, q2] as MCParticleData objects — truth data
+        #         df = df.Define(
+        #             f"W_on_shell_to_{q1}_{q2}_objs",
+        #             f"W_on_shell_to_{q1}_{q2}_idxs.size() > 0 ? "
+        #             f"FCCAnalyses::ZHfunctions::get_mc(W_on_shell_to_{q1}_{q2}_idxs, Particle) : "
+        #             f"ROOT::VecOps::RVec<edm4hep::MCParticleData>{{}}"
+        #         )
+        #         df = df.Define(
+        #             f"W_off_shell_to_{q1}_{q2}_objs",
+        #             f"W_off_shell_to_{q1}_{q2}_idxs.size() > 0 ? "
+        #             f"FCCAnalyses::ZHfunctions::get_mc(W_off_shell_to_{q1}_{q2}_idxs, Particle) : "
+        #             f"ROOT::VecOps::RVec<edm4hep::MCParticleData>{{}}"
+        #         )
+
+        #         # mixing for incorrect pairs to get mass
+        #         df = df.Define(
+        #             f"False_mixed_{q1}_{q2}_quarks",
+        #             f"(W_on_shell_to_{q1}_{q2}_objs.size() > 2 && W_off_shell_to_{q1}_{q2}_objs.size() > 2) ? "
+        #             f"FCCAnalyses::ZHfunctions::MixQuarkPairsAndGetMass("
+        #             f"ROOT::VecOps::Take(W_on_shell_to_{q1}_{q2}_objs, ROOT::VecOps::RVec<long long>{{1, 2}}), "
+        #             f"ROOT::VecOps::Take(W_off_shell_to_{q1}_{q2}_objs, ROOT::VecOps::RVec<long long>{{1, 2}})) : "
+        #             f"FCCAnalyses::ZHfunctions::MixQuarkPairsInfo{{}}"
+        #         )
+
+        #         df = df.Define(
+        #             f"False_mixed_{q1}_{q2}_perm1_mass",
+        #             f"False_mixed_{q1}_{q2}_quarks.perm1_mass"
+        #         )
+        #         df = df.Define(
+        #             f"False_mixed_{q1}_{q2}_perm2_mass",
+        #             f"False_mixed_{q1}_{q2}_quarks.perm2_mass"
+        #         )
+            
+        #         df = df.Define(
+        #             f"W_off_shell_to_{q1}_{q2}_quarks_idxs",
+        #             f"W_off_shell_to_{q1}_{q2}_idxs.size() > 2 ? "
+        #             f"ROOT::VecOps::Take(W_off_shell_to_{q1}_{q2}_idxs, {{1, 2}}) : "
+        #             f"ROOT::VecOps::RVec<int>{{}}"
+        #         )
+
+        #         df = df.Define(
+        #             f"W_on_shell_to_{q1}_{q2}_quarks_idxs",
+        #             f"W_on_shell_to_{q1}_{q2}_idxs.size() > 2 ? "
+        #             f"ROOT::VecOps::Take(W_on_shell_to_{q1}_{q2}_idxs, {{1, 2}}) : "
+        #             f"ROOT::VecOps::RVec<int>{{}}"
+        #         )
+
+        #         df = df.Define(
+        #             f"All_W_quarks_to_{q1}_{q2}_idx",
+        #             f"(W_on_shell_to_{q1}_{q2}_idxs.size() > 2) && (W_off_shell_to_{q1}_{q2}_idxs.size() > 2) ? "
+        #             f"ROOT::VecOps::Concatenate(W_on_shell_to_{q1}_{q2}_quarks_idxs, W_off_shell_to_{q1}_{q2}_quarks_idxs) : "
+        #             f"ROOT::VecOps::RVec<int>{{}}"
+        #         )
+
+
+
+
+        # ##### now want to define the two pairs invariant mass as well as if they are the true match
+
+        # on_shell_had  = " || ".join(f"W_on_shell_to_{q1}_{q2}_quarks_idxs.size() > 0"  for (q1, _), (q2, _) in combinations(quark_pdg.items(), 2))
+        # off_shell_had = " || ".join(f"W_off_shell_to_{q1}_{q2}_quarks_idxs.size() > 0" for (q1, _), (q2, _) in combinations(quark_pdg.items(), 2))
+        # df = df.Filter(f"({on_shell_had}) && ({off_shell_had})", "fully hadronic")
+
+
+        # # now we combine on and off shells quarks per event, 
+        # # so we filter across all names for the non-empty qq channel and combine
+
+        # channel_list = [(q1, q2) for (q1,_),(q2,_) in combinations(quark_pdg.items(), 2)]
+
+        # on_expr = "ROOT::VecOps::RVec<int>{}"
+        # for q1, q2 in reversed(channel_list):
+        #     on_expr = f"(W_on_shell_to_{q1}_{q2}_quarks_idxs.size() > 0 ? W_on_shell_to_{q1}_{q2}_quarks_idxs : {on_expr})"
+
+        # off_expr = "ROOT::VecOps::RVec<int>{}"
+        # for q1, q2 in reversed(channel_list):
+        #     off_expr = f"(W_off_shell_to_{q1}_{q2}_quarks_idxs.size() > 0 ? W_off_shell_to_{q1}_{q2}_quarks_idxs : {off_expr})"
+
+        # df = df.Define("on_shell_quark_idxs", on_expr)
+        # df = df.Define("off_shell_quark_idxs", off_expr)
+        # df = df.Define("All_W_quarks_idx", "ROOT::VecOps::Concatenate(on_shell_quark_idxs, off_shell_quark_idxs)")
+        # df = df.Define("on_shell_quark_objs",  "FCCAnalyses::ZHfunctions::get_mc(on_shell_quark_idxs, Particle)")
+        # df = df.Define("off_shell_quark_objs", "FCCAnalyses::ZHfunctions::get_mc(off_shell_quark_idxs, Particle)")
+
+        # want the 4 vecs of all quarks in hadronic events
+
+        # still want to get fas
+
+
         # what we call gen_quarks now
-
-
-        df = df.Define("All_W_quarks_idx", f"FCCAnalyses::WWFunctions::sel_quarks_fromBoson_idx({_boson_pdg})(Particle, Particle0)")
+        df = df.Define("all_W_quarks_obj", "FCCAnalyses::ZHfunctions::get_mc(All_W_quarks_idx, Particle)")
         df = df.Define("all_W_quarks_tlv", "FCCAnalyses::MCParticle::get_tlv(all_W_quarks_obj)")
 
         
@@ -432,40 +541,62 @@ class RDFanalysis:
             f"ROOT::VecOps::RVec<double>{{}}"
         )
 
+        df = df.Define(
+            f"Candidate_W_qq_pairs",
+            f"(Mass_qq_pairs.size() == 6) ? "
+            f"FCCAnalyses::ZHfunctions::compare_pair_mass_to_w(Mass_qq_pairs, All_W_quarks_idx, All_W_quarks_pairs_idx, Particle, W_on_shell_decay_idx) : "
+            f"FCCAnalyses::ZHfunctions::OnOffidx{{}}"
+        )
+
+        df = df.Define(f"Candidate_on_shell_W_qq_p_idxs",  f"Candidate_W_qq_pairs.on_shell_idx")
+        df = df.Define(f"Candidate_off_shell_W_qq_p_idxs", f"Candidate_W_qq_pairs.off_shell_idx")
+        df = df.Define(f"Candidate_on_shell_W_qq_mass", f"Candidate_W_qq_pairs.on_shell_mass")
+        df = df.Define(f"Candidate_off_shell_W_qq_mass", f"Candidate_W_qq_pairs.off_shell_mass")
+        df = df.Define(f"Candidate_on_shell_W_qq_p_flavor", f"Candidate_W_qq_pairs.on_shell_flavor")
+        df = df.Define(f"Candidate_off_shell_W_qq_p_flavor", f"Candidate_W_qq_pairs.off_shell_flavor")
+
+        df = df.Define(f"W_qq_match_truth", f"Candidate_W_qq_pairs.match_truth")
+
+        # collect false-mixed pair masses from the active quark channel
+        perm1_mass_expr = "ROOT::VecOps::RVec<double>{}"
+        for q1, q2 in reversed(channel_list):
+            perm1_mass_expr = f"(False_mixed_{q1}_{q2}_perm1_mass.size() > 0 ? False_mixed_{q1}_{q2}_perm1_mass : {perm1_mass_expr})"
+
+        perm2_mass_expr = "ROOT::VecOps::RVec<double>{}"
+        for q1, q2 in reversed(channel_list):
+            perm2_mass_expr = f"(False_mixed_{q1}_{q2}_perm2_mass.size() > 0 ? False_mixed_{q1}_{q2}_perm2_mass : {perm2_mass_expr})"
+
+        df = df.Define("False_mixed_perm1_mass", perm1_mass_expr)
+        df = df.Define("False_mixed_perm2_mass", perm2_mass_expr)
 
 
 
-        if saveExclJets:
+        
+
+
+
+
+
+
+        if    saveExclJets:
             df = df.Define(
                 "jets_p4",
                 "JetConstituentsUtils::compute_tlv_jets({})".format(
                     jetClusteringHelper.jets
                 ),
             )
-            for i in (1, 2, 3, 4):
-                df = df.Define(f"jet{i}", f"jets_p4[{i-1}]")
-            df = df.Define("n_reco_jets", "(int)jets_p4.size()")
-            df = df.Filter("n_reco_jets == 4", "exactly 4 reco jets")   # safety (very rare to fail)
 
-        # TRUTH MATCHING
         # BEST METHOD FOR MATCHING J TO Q, WE WANT TO SAVE THIS
         # matching jets to quarks using a chi-squared fit using dPhi and dEta
         # sigmas defined in order of {eta, phi}
         # sigmas estimated from 5,000 events when using old deltaR algorithim (no chi-squared fit), {s_eta = 0.2480, s_phi = 0.2389}
-
-        # the indexs will be our perms from bw_pairing, matches jet to quark like
-        # perm = {2, 0, 3, 1}
-        # jet 0 → quark 2
-        # jet 1 → quark 0
-        # jet 2 → quark 3
-        # jet 3 → quark 1
 
         df = df.Define(
             'chi2_matched_jets_to_q_etaphi',
             f'FCCAnalyses::ZHfunctions::JtoQ_ChiSquared_eta_phi(jets_p4, all_W_quarks_tlv, ROOT::VecOps::RVec<double>({{{SIGMA_ETA}, {SIGMA_PHI}}}), 0.1)'
         )
 
-        df = df.Define('etaphi_perm',              'chi2_matched_jets_to_q_etaphi.idx')
+        df = df.Define('chi2_etaphi_idx',              'chi2_matched_jets_to_q_etaphi.idx')
         df = df.Define('chi2_etaphi_under_min_delR',   'chi2_matched_jets_to_q_etaphi.under_min_delR')
         df = df.Define('chi2_etaphi_delta_Rs',         'chi2_matched_jets_to_q_etaphi.delta_Rs')
         df = df.Define('chi2_etaphi_delta_etas',       'chi2_matched_jets_to_q_etaphi.delta_etas')
@@ -479,77 +610,94 @@ class RDFanalysis:
             'chi2_matched_jets_to_q_dR',
             'FCCAnalyses::ZHfunctions::JtoQ_ChiSquared_deltaR(jets_p4, all_W_quarks_tlv, ROOT::VecOps::RVec<double>({1.0}), 0.1)'
         )
-        df = df.Define('dR_perm',            'chi2_matched_jets_to_q_dR.idx')
+        df = df.Define('chi2_dR_idx',            'chi2_matched_jets_to_q_dR.idx')
         df = df.Define('chi2_dR_under_min_delR', 'chi2_matched_jets_to_q_dR.under_min_delR')
         df = df.Define('chi2_dR_delta_Rs',       'chi2_matched_jets_to_q_dR.delta_Rs')
         df = df.Define('chi2_dR_best_chi2',      'chi2_matched_jets_to_q_dR.best_chi2')
 
+        
 
-        # perm from previous script works approximately the same as the chi2 approach, this is almost identical
-        # but takes minimum sum of dR instead of minimum sum of squares
 
-        # NEED TO ATTEMPT MATCHING FIRST
 
-        df = df.Define("bwpair", f"FCCAnalyses::WWFunctions::bwPairing(jet1, jet2, jet3, jet4, {SIGMA_W_ON_SHELL})")
-        df = df.Define("bwpair_pairing",   "bwpair.pairing")
-        df = df.Define("bwpair_gof_best",  "bwpair.gof_best")
-        df = df.Define("bwpair_prob_best", "bwpair.prob_best")
-        df = df.Define("bwpair_dgof",      "bwpair.dgof")
-        for k in range(3):
-            df = df.Define(f"bwpair_gof{k}",  f"bwpair.gof[{k}]")
-            df = df.Define(f"bwpair_prob{k}", f"bwpair.prob[{k}]")
-            df = df.Define(f"bwpair_ma{k}",   f"bwpair.m_a[{k}]")
-            df = df.Define(f"bwpair_mb{k}",   f"bwpair.m_b[{k}]")
+        # now we want to take our 4vecs of our jets and compute all dijet masses
+        # function currently only gives the masses, not how they are paired
+
+        df = df.Define(
+            "dijet_info",
+            "FCCAnalyses::ZHfunctions::all_invariant_masses_and_pair_idxs(jets_p4)"
+        )
+
+        df = df.Define(
+            "dijet_masses",
+            "dijet_info.masses"
+        )
+
+        # list of tuples that say how the pairs are built from the jets vector
+        df = df.Define(
+            "dijet_pairs_idxs",
+            "dijet_info.pair_idxs"
+        )
+
+        # temporary
+        df = df.Define("dijet_pair_idx_a", "dijet_info.pair_idxs[0]")  # first jet of each pair
+        df = df.Define("dijet_pair_idx_b", "dijet_info.pair_idxs[1]")  # second jet of each pair
+
+
+        # now try to do a similar thing to what we did with quarks, may have to manipulate some indexs around since function expects only quark info
 
         
-        # Pure BW pairing (no detector smearing) — saved alongside Voigt for comparison
-        df = df.Define("bwpair_bw", "FCCAnalyses::WWFunctions::bwPairingBW(jet1, jet2, jet3, jet4)")
-        df = df.Define("bwpair_bw_pairing",   "bwpair_bw.pairing")
-        df = df.Define("bwpair_bw_gof_best",  "bwpair_bw.gof_best")
-        df = df.Define("bwpair_bw_prob_best", "bwpair_bw.prob_best")
-        df = df.Define("bwpair_bw_dgof",      "bwpair_bw.dgof")
+        # need to get dijet_pairs_idxs to point
+
+        df = df.Define(
+            "dijet_pairs_as_quark_idx",
+            "FCCAnalyses::ZHfunctions::transform_pair_idxs(dijet_pairs_idxs, chi2_etaphi_idx)"
+        )
+
+
+        df = df.Define(
+            f"Candidate_reco_W_jj_pairs",
+            f"(dijet_masses.size() == 6) ? "  #dijet mass   # indexs of quarks (so need to point jet_to_quark_idxs to get their idxs first)    # modified dijet_pairs_idxs (need to check these should be pointing to jets which need to point to quarks)
+            f"FCCAnalyses::ZHfunctions::chi2_compare_pair_mass_to_w(dijet_masses, All_W_quarks_idx, dijet_pairs_as_quark_idx, Particle, {SIGMA_W_ON_SHELL}, W_on_shell_decay_idx) : "
+            f"FCCAnalyses::ZHfunctions::OnOffidx{{}}"
+        )
+
+        df = df.Define("Candidate_reco_on_shell_W_jj_p_idxs",  "Candidate_reco_W_jj_pairs.on_shell_idx")
+        df = df.Define("Candidate_reco_off_shell_W_jj_p_idxs", "Candidate_reco_W_jj_pairs.off_shell_idx")
+        df = df.Define("Candidate_reco_on_shell_W_jj_mass",    "Candidate_reco_W_jj_pairs.on_shell_mass")
+        df = df.Define("Candidate_reco_off_shell_W_jj_mass",   "Candidate_reco_W_jj_pairs.off_shell_mass")
+        df = df.Define("Candidate_reco_on_shell_W_jj_flavor",  "Candidate_reco_W_jj_pairs.on_shell_flavor")
+        df = df.Define("Candidate_reco_off_shell_W_jj_flavor", "Candidate_reco_W_jj_pairs.off_shell_flavor")
+        df = df.Define("Candidate_reco_off_shell_W_jj_best_chi2",        "Candidate_reco_W_jj_pairs.best_chi2")
+        df = df.Define("Candidate_reco_off_shell_W_jj_second_best_chi2", "Candidate_reco_W_jj_pairs.second_best_chi2")
+        df = df.Define("Candidate_reco_off_shell_W_jj_third_best_chi2",  "Candidate_reco_W_jj_pairs.third_best_chi2")
+        df = df.Define("reco_W_jj_match_truth",                          "Candidate_reco_W_jj_pairs.match_truth")
+
+        df = df.Define("chi2_best_matched",
+            "reco_W_jj_match_truth == 1 ? chi2_etaphi_best_chi2 : -999.0")
+        df = df.Define("chi2_best_unmatched",
+            "reco_W_jj_match_truth == 0 ? chi2_etaphi_best_chi2 : -999.0")
+        df = df.Define("chi2_second_best_matched",
+            "reco_W_jj_match_truth == 1 ? chi2_etaphi_second_best_chi2 : -999.0")
+        df = df.Define("chi2_second_best_unmatched",
+            "reco_W_jj_match_truth == 0 ? chi2_etaphi_second_best_chi2 : -999.0")
+
+        _sentinel = "ROOT::VecOps::RVec<double>(4, -999.0)"
+        df = df.Define("deltaRs_matched",
+            f"reco_W_jj_match_truth == 1 ? chi2_etaphi_delta_Rs : {_sentinel}")
+        df = df.Define("deltaRs_unmatched",
+            f"reco_W_jj_match_truth == 0 ? chi2_etaphi_delta_Rs : {_sentinel}")
+        df = df.Define("deltaEtas_matched",
+            f"reco_W_jj_match_truth == 1 ? chi2_etaphi_delta_etas : {_sentinel}")
+        df = df.Define("deltaEtas_unmatched",
+            f"reco_W_jj_match_truth == 0 ? chi2_etaphi_delta_etas : {_sentinel}")
+        df = df.Define("deltaPhis_matched",
+            f"reco_W_jj_match_truth == 1 ? chi2_etaphi_delta_phis : {_sentinel}")
+        df = df.Define("deltaPhis_unmatched",
+            f"reco_W_jj_match_truth == 0 ? chi2_etaphi_delta_phis : {_sentinel}")
 
 
 
 
-
-
-
-        # TRUTH MATCHING
-
-        for k in range(4):
-            df = df.Define(f"gen_q{k}", f"all_W_quarks_tlv[{k}]")
-
-        for i in (1, 2, 3, 4):
-            k = i - 1
-            df = df.Define(f"gen_quark{i}", f"all_W_quarks_tlv[dR_perm[{k}]]")
-            # how close jet i is to its quark (used to call an event "matched")
-            df = df.Define(f"jet{i}_matched_q_dR", f"(double)jet{i}.DeltaR(gen_quark{i})")
-            # W-label of jet i: quarks 0,1 -> boson A (0); quarks 2,3 -> boson B (1)
-            df = df.Define(f"jet{i}_wlab", f"(int)(dR_perm[{k}] >= 2)")
-        # the true pairing index {0,1,2} from the 4 jet W-labels
-        df = df.Define("gen_pairing_true",
-            "FCCAnalyses::WWFunctions::pairing_index_from_groups("
-            "jet1_wlab, jet2_wlab, jet3_wlab, jet4_wlab)")
-        # did each tool pick the true pairing? (1/0)  <- efficiency numerator
-        df = df.Define("bwpair_correct",
-            "(int)(gen_pairing_true >= 0 && bwpair.pairing == gen_pairing_true)")
-        df = df.Define("bwpair_bw_correct",
-            "(int)(gen_pairing_true >= 0 && bwpair_bw.pairing == gen_pairing_true)")
-        # gen-level W masses: quarks 0,1 -> boson A; quarks 2,3 -> boson B
-        df = df.Define("gen_Wa_mass", "(float)(gen_q0 + gen_q1).M()")
-        df = df.Define("gen_Wb_mass", "(float)(gen_q2 + gen_q3).M()")
-        # reco di-jet masses of the truth-matched W pairs.
-        # m_a in bwpair always contains jet1 (see order[3][4] in BWPairing.h),
-        # so jet1_wlab tells us whether m_a corresponds to W_A or W_B.
-        df = df.Define("reco_matched_Wa_mass",
-            "gen_pairing_true >= 0 ? "
-            "(jet1_wlab == 0 ? bwpair.m_a[gen_pairing_true] : bwpair.m_b[gen_pairing_true]) "
-            ": -1.0f")
-        df = df.Define("reco_matched_Wb_mass",
-            "gen_pairing_true >= 0 ? "
-            "(jet1_wlab == 0 ? bwpair.m_b[gen_pairing_true] : bwpair.m_a[gen_pairing_true]) "
-            ": -1.0f")
 
 
 
