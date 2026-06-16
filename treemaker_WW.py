@@ -22,8 +22,18 @@ all_processes = {
 
 # One on shell, one off shell WW events
     "p8_ee_WW_ecm160": {
-        "fraction": 0.01,
+        "fraction": 1,
     },
+
+# # both very on shell
+#     "p8_ee_WW_ecm240": {
+#         "fraction": 1,
+#     }
+
+    
+
+
+
 
 ###FOR foll WW background samples with PS variations xsec values are wrong in the database!!
 #   "p8_ee_WW_PSdown_ecm340":{ "fraction": 1,},
@@ -90,12 +100,12 @@ all_processes = {
 
 
 
-available_ecm = ['125', '160', '163', '340','345', '350', '355','365']
+available_ecm = ['125', '160', '163', '240', '340','345', '350', '355','365']
 
 hadronic  = True
 #semihad  = False
 #lep      = False
-ecm       = 160
+ecm = int(os.environ.get("ecm", list(all_processes.keys())[-1][-3:]))
 print(ecm)
 
 saveExclJets = True
@@ -112,16 +122,34 @@ if  channel not in ["lep","semihad","had"]:
     #channel="semihad"
 print(channel)    
 
-processList={key: value for key, value in all_processes.items() if str(ecm) in available_ecm and str(ecm) in key } # (True if str('p8_ee_WW_ecm'+ecm) in key else str('wzp6_ee_WbWb_ecm'+ecm) in key)}  
+processList={key: value for key, value in all_processes.items() if str(ecm) in available_ecm and str(ecm) in key }
 
-print(processList)
-# Production tag when running over EDM4Hep centrally produced events, this points to the yaml files for getting sample statistics (mandatory)
-#prodTag     = "FCCee/winter2023/IDEA/"
+# override sample via env var (e.g. BW_SAMPLE=p8_ee_ZZ_ecm160 for ZZ control sample)
+_BW_SAMPLE = os.environ.get("BW_SAMPLE", "").strip()
+_sample_tag = _BW_SAMPLE if _BW_SAMPLE else f"p8_ee_WW_ecm{ecm}"
 
 inputDir    = "/eos/user/m/mlevere/ttThreshold-analysis/localSamples/"
 
-#Optional: output directory, default is local running directoryp
-outputDir   = "/eos/user/m/mlevere/ttThreshold-analysis/outputs/treemaker/WbWb/{}_WW_new_matching".format(channel)
+# compute fraction to limit events: count available files, assume 100k events each
+_n_events = int(os.environ.get("N_EVENTS", 0))
+import glob as _glob
+_n_files = len(_glob.glob(os.path.join(inputDir, _sample_tag, "*.root")))
+if _n_events > 0 and _n_files > 0:
+    _total_events = _n_files * 100000
+    _fraction = min(1.0, _n_events / _total_events)
+else:
+    _fraction = 1.0
+
+processList = {_sample_tag: {"fraction": _fraction}}
+
+print(f"processList: {processList}  (fraction={_fraction:.4f}, {_n_files} files, ~{int(_fraction*_n_files*100000)} events)")
+
+# Production tag when running over EDM4Hep centrally produced events, this points to the yaml files for getting sample statistics (mandatory)
+#prodTag     = "FCCee/winter2023/IDEA/"
+
+_sigma_str  = os.environ.get("BW_SIGMA", "").strip()
+_sigma_tag  = f"_sig{float(_sigma_str):.4f}" if _sigma_str else ""
+outputDir   = "/eos/user/m/mlevere/ttThreshold-analysis/outputs/treemaker/WbWb/{}{}_new_matching".format(_sample_tag, _sigma_tag)
 
 
 # additional/costom C++ functions, defined in header files (optional)
@@ -183,7 +211,9 @@ BW_BOSON   = os.environ.get("BW_BOSON", "W").strip().upper()
 BW_SQRTD45 = float(os.environ.get("BW_SQRTD45_MAX", "7.0"))
 
 
-_boson_pdg  = {"W": 24, "Z": 23}[BW_BOSON]
+_boson_pdg   = {"W": 24,   "Z": 23}[BW_BOSON]
+_boson_mass  = {"W": 80.4, "Z": 91.2}[BW_BOSON]
+_boson_width = {"W": 2.1,  "Z": 2.495}[BW_BOSON]
 
 
 
@@ -211,9 +241,13 @@ SIGMA_PHI = 0.0529
 
 SIGMA_W_ON_SHELL = 5.3665
 
-# refers to detector resolution for gauss in voigt distribution
-sigma = 3.6110261681321907
+# refers to detector resolution for gauss in voigt distribution; override with BW_SIGMA=<val>
+sigma = float(os.environ.get("BW_SIGMA", "3.6110261681321907"))
 
+_bw2d_table_dir = "/afs/cern.ch/user/m/mlevere/private/FCCTutorial/ttThreshold-analysis/bw2d_tables"
+_bw2d_table_path = f"{_bw2d_table_dir}/bw2d_mWW{float(ecm):.1f}_mw80.419_gw2.049_sig{sigma:.4f}_dm0.05.bin"
+os.environ.setdefault("BW2D_TABLE_PATH", _bw2d_table_path)
+print(f"[treemaker] BW2D_TABLE_PATH = {os.environ['BW2D_TABLE_PATH']}")
 
 chi2_cut = 100
 
@@ -229,11 +263,15 @@ all_branches = [
     # --- jets ---
     "jets_p4",
     "n_reco_jets",
+    "d_45",
 
     # --- chi2 jet-quark matching ---
     'chi2_etaphi_best_chi2', 'chi2_etaphi_second_best_chi2', 'chi2_etaphi_third_best_chi2',
     'chi2_etaphi_delta_Rs', 'chi2_etaphi_delta_etas', 'chi2_etaphi_delta_phis',
     'chi2_dR_best_chi2', 'chi2_dR_delta_Rs',
+    'simple_jet_1_deltaR', 'simple_jet_2_deltaR', 'simple_jet_3_deltaR', 'simple_jet_4_deltaR',
+    'simple_jet_1_delta_eta', 'simple_jet_2_delta_eta', 'simple_jet_3_delta_eta', 'simple_jet_4_delta_eta',
+    'simple_jet_1_delta_phi', 'simple_jet_2_delta_phi', 'simple_jet_3_delta_phi', 'simple_jet_4_delta_phi',
 
     # --- truth matching ---
     "gen_pairing_true",
@@ -241,6 +279,8 @@ all_branches = [
     "jet1_matched_q_dR", "jet2_matched_q_dR", "jet3_matched_q_dR", "jet4_matched_q_dR",
     "gen_Wa_mass", "gen_Wb_mass",
     "reco_matched_Wa_mass", "reco_matched_Wb_mass",
+    "Wa_dR_between_jets", "Wa_dTheta_between_jets", "Wa_P_from_jets", "Wa_Pt_from_jets", "Wa_E_from_jets",
+    "Wb_dR_between_jets", "Wb_dTheta_between_jets", "Wb_P_from_jets", "Wb_Pt_from_jets", "Wb_E_from_jets",
 
     # --- BW pairing (Voigt) ---
     "bwpair_pairing", "bwpair_gof_best", "bwpair_prob_best", "bwpair_dgof",
@@ -253,6 +293,18 @@ all_branches = [
     # --- BW pairing (pure BW, no detector smearing) ---
     "bwpair_bw_pairing", "bwpair_bw_gof_best", "bwpair_bw_prob_best", "bwpair_bw_dgof",
     "bwpair_bw_correct",
+
+    # --- 2D BW pairing (phase-space weighted double BW) ---
+    "double_bwpair_pairing", "double_bwpair_gof_best", "double_bwpair_prob_best", "double_bwpair_dgof",
+    "double_bwpair_correct",
+
+    # --- 2D BW pairing with detector smearing (precomputed table) ---
+    "double_smeared_bwpair_pairing", "double_smeared_bwpair_gof_best", "double_smeared_bwpair_prob_best", "double_smeared_bwpair_dgof",
+    "double_smeared_bwpair_gof0", "double_smeared_bwpair_gof1", "double_smeared_bwpair_gof2",
+    "double_smeared_bwpair_prob0", "double_smeared_bwpair_prob1", "double_smeared_bwpair_prob2",
+    "double_smeared_bwpair_ma0", "double_smeared_bwpair_ma1", "double_smeared_bwpair_ma2",
+    "double_smeared_bwpair_mb0", "double_smeared_bwpair_mb1", "double_smeared_bwpair_mb2",
+    "double_smeared_bwpair_correct",
 
 ]
 
@@ -267,9 +319,8 @@ class RDFanalysis:
     # __________________________________________________________
     # Mandatory: analysers funtion to define the analysers to process, please make sure you return the last dataframe, in this example it is df2
     def analysers(df):
-
-
-    
+        import ROOT
+        ROOT.FCCAnalyses.WWFunctions.init_bw2d_table()
 
         # __________________________________________________________
         # Mandatory: analysers funtion to define the analysers to process, please make sure you return the last dataframe, in this example it is df2
@@ -305,7 +356,7 @@ class RDFanalysis:
             # first, select Ws
         df = df.Define(
             "Ws_all",
-            "FCCAnalyses::MCParticle::sel_pdgID(24, true)(Particle)"
+            f"FCCAnalyses::MCParticle::sel_pdgID({_boson_pdg}, true)(Particle)"
         )
 
         # change hard to production
@@ -340,7 +391,7 @@ class RDFanalysis:
         # peak center and width
         df = df.Define(
             "Ws_on_and_off_shell",
-            "FCCAnalyses::ZHfunctions::get_on_and_off_shell_WW_160ecm(HardWs_all, Particle, 80.4, 2.1)"
+            f"FCCAnalyses::ZHfunctions::get_on_and_off_shell_WW_160ecm(HardWs_all, Particle, {_boson_mass}, {_boson_width})"
         )
 
         df = df.Define("W_on_shell_idx",  "Ws_on_and_off_shell.high_mass_idx")
@@ -374,9 +425,10 @@ class RDFanalysis:
         if saveExclJets:
             df = jetClusteringHelper.define(df)
             df = df.Define("d_45", "JetClusteringUtils::get_exclusive_dmerge(_jet, 4)")
-            if BW_SQRTD45 > 0:
-                df = df.Filter(f"d_45 < {BW_SQRTD45 * BW_SQRTD45}",
-                               f"genuine 4-jet: sqrt(d_45) < {BW_SQRTD45:g} GeV")
+            # if BW_SQRTD45 > 0:
+                # df = df.Filter(f"d_45 < {BW_SQRTD45 * BW_SQRTD45}",
+                #                f"genuine 4-jet: sqrt(d_45) < {BW_SQRTD45:g} GeV")
+                # instead of a filter, just create a collection
         df = jetClusteringHelper_R5.define(df)
         ## define jet flavour tagging parameters
         if saveExclJets:
@@ -474,6 +526,14 @@ class RDFanalysis:
         df = df.Define('chi2_etaphi_second_best_chi2', 'chi2_matched_jets_to_q_etaphi.second_best_chi2')
         df = df.Define('chi2_etaphi_third_best_chi2',  'chi2_matched_jets_to_q_etaphi.third_best_chi2')
 
+        for i in range(1, 5):
+            df = df.Define(f"simple_jet_{i}_deltaR", f"chi2_etaphi_delta_Rs[{i-1}]")
+            df = df.Define(f"simple_jet_{i}_delta_eta", f"chi2_etaphi_delta_etas[{i-1}]")
+            df = df.Define(f"simple_jet_{i}_delta_phi", f"chi2_etaphi_delta_phis[{i-1}]")
+
+
+
+
         # chi2 using ΔR only (sigma=1 → equivalent to minimising Σ ΔR²)
         df = df.Define(
             'chi2_matched_jets_to_q_dR',
@@ -510,6 +570,28 @@ class RDFanalysis:
         df = df.Define("bwpair_bw_dgof",      "bwpair_bw.dgof")
 
 
+        # now we want to try to use 2D BW
+
+        # 2D BW pairing (phase-space weighted double BW, no detector smearing)
+        # doubleBWPairing takes m_WW (GeV) and squares it internally -> pass ecm, NOT ecm*ecm
+        df = df.Define("double_bwpair", f"FCCAnalyses::WWFunctions::doubleBWPairing(jet1, jet2, jet3, jet4, {ecm})")
+        df = df.Define("double_bwpair_pairing",   "double_bwpair.pairing")
+        df = df.Define("double_bwpair_gof_best",  "double_bwpair.gof_best")
+        df = df.Define("double_bwpair_prob_best", "double_bwpair.prob_best")
+        df = df.Define("double_bwpair_dgof",      "double_bwpair.dgof")
+
+        # 2D BW pairing with detector smearing (precomputed mmap table, init'd above)
+        df = df.Define("double_smeared_bwpair", "FCCAnalyses::WWFunctions::doubleBWPairingSmeared(jet1, jet2, jet3, jet4)")
+        df = df.Define("double_smeared_bwpair_pairing",   "double_smeared_bwpair.pairing")
+        df = df.Define("double_smeared_bwpair_gof_best",  "double_smeared_bwpair.gof_best")
+        df = df.Define("double_smeared_bwpair_prob_best", "double_smeared_bwpair.prob_best")
+        df = df.Define("double_smeared_bwpair_dgof",      "double_smeared_bwpair.dgof")
+        for k in range(3):
+            df = df.Define(f"double_smeared_bwpair_gof{k}",  f"double_smeared_bwpair.gof[{k}]")
+            df = df.Define(f"double_smeared_bwpair_prob{k}", f"double_smeared_bwpair.prob[{k}]")
+            df = df.Define(f"double_smeared_bwpair_ma{k}",   f"double_smeared_bwpair.m_a[{k}]")
+            df = df.Define(f"double_smeared_bwpair_mb{k}",   f"double_smeared_bwpair.m_b[{k}]")
+
 
 
 
@@ -522,12 +604,32 @@ class RDFanalysis:
 
         for i in (1, 2, 3, 4):
             k = i - 1
-            df = df.Define(f"gen_quark{i}", f"all_W_quarks_tlv[dR_perm[{k}]]")
+            df = df.Define(f"gen_quark{i}", f"all_W_quarks_tlv[etaphi_perm[{k}]]")
             # how close jet i is to its quark (used to call an event "matched")
             df = df.Define(f"jet{i}_matched_q_dR", f"(double)jet{i}.DeltaR(gen_quark{i})")
             # W-label of jet i: quarks 0,1 -> boson A (0); quarks 2,3 -> boson B (1)
-            df = df.Define(f"jet{i}_wlab", f"(int)(dR_perm[{k}] >= 2)")
-        # the true pairing index {0,1,2} from the 4 jet W-labels
+            df = df.Define(f"jet{i}_wlab", f"(int)(etaphi_perm[{k}] >= 2)")
+
+        # sometimes want to look at tightly cut events
+        # df = df.Filter("jet1_matched_q_dR < 0.1 && jet2_matched_q_dR < 0.1 && jet3_matched_q_dR < 0.1 && jet4_matched_q_dR < 0.1", "all jets matched dR < 0.1")
+
+        df = df.Define("W_jet_kin",
+            "FCCAnalyses::ZHfunctions::compute_W_jet_kinematics("
+            "jet1, jet2, jet3, jet4, jet1_wlab, jet2_wlab, jet3_wlab, jet4_wlab)")
+        df = df.Define("Wa_dR_between_jets",     "W_jet_kin.Wa_dR")
+        df = df.Define("Wa_dTheta_between_jets", "W_jet_kin.Wa_dTheta")
+        df = df.Define("Wa_P_from_jets",         "W_jet_kin.Wa_P")
+        df = df.Define("Wa_Pt_from_jets",        "W_jet_kin.Wa_Pt")
+        df = df.Define("Wa_E_from_jets",         "W_jet_kin.Wa_E")
+        df = df.Define("Wb_dR_between_jets",     "W_jet_kin.Wb_dR")
+        df = df.Define("Wb_dTheta_between_jets", "W_jet_kin.Wb_dTheta")
+        df = df.Define("Wb_P_from_jets",         "W_jet_kin.Wb_P")
+        df = df.Define("Wb_Pt_from_jets",        "W_jet_kin.Wb_Pt")
+        df = df.Define("Wb_E_from_jets",         "W_jet_kin.Wb_E")
+
+
+
+        # the true pairing index {0,1,2} from the 4 jet W-labes
         df = df.Define("gen_pairing_true",
             "FCCAnalyses::WWFunctions::pairing_index_from_groups("
             "jet1_wlab, jet2_wlab, jet3_wlab, jet4_wlab)")
@@ -536,6 +638,10 @@ class RDFanalysis:
             "(int)(gen_pairing_true >= 0 && bwpair.pairing == gen_pairing_true)")
         df = df.Define("bwpair_bw_correct",
             "(int)(gen_pairing_true >= 0 && bwpair_bw.pairing == gen_pairing_true)")
+        df = df.Define("double_bwpair_correct",
+            "(int)(gen_pairing_true >= 0 && double_bwpair.pairing == gen_pairing_true)")
+        df = df.Define("double_smeared_bwpair_correct",
+            "(int)(gen_pairing_true >= 0 && double_smeared_bwpair.pairing == gen_pairing_true)")
         # gen-level W masses: quarks 0,1 -> boson A; quarks 2,3 -> boson B
         df = df.Define("gen_Wa_mass", "(float)(gen_q0 + gen_q1).M()")
         df = df.Define("gen_Wb_mass", "(float)(gen_q2 + gen_q3).M()")

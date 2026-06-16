@@ -477,6 +477,10 @@ static inline double log_Z_bw_phasespace_ontf(double m_WW, double mW, double gW)
     return std::log(Z > 0.0 ? Z : 1e-300);
 }
 
+
+
+
+
 // ── 3D precompute table of log Z over (mW, gW, m_WW) ──────────────────────
 //
 // At ~1.8 µs per on-the-fly call, log_Z dominates the kinfit chi² (the rest

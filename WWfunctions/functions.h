@@ -935,6 +935,172 @@ MixQuarkPairsInfo MixQuarkPairsAndGetMass(
 
 
 
+struct DRandDTheta {
+    ROOT::VecOps::RVec<double> DR;
+    ROOT::VecOps::RVec<double> DTheta;
+};
+
+DRandDTheta GetAngularInfoFromDijet(
+    const TLorentzVector& lv1,
+    const TLorentzVector& lv2)
+{
+    DRandDTheta result;
+
+    result.DR.push_back(lv1.DeltaR(lv2));
+    result.DTheta.push_back(lv1.Angle(lv2.Vect()));
+
+    return result;
+}
+
+
+
+
+
+
+
+
+struct WJetKinematics {
+    double Wa_dR, Wa_dTheta, Wa_P, Wa_Pt, Wa_E;
+    double Wb_dR, Wb_dTheta, Wb_P, Wb_Pt, Wb_E;
+};
+
+inline WJetKinematics compute_W_jet_kinematics(
+    const TLorentzVector& j1, const TLorentzVector& j2,
+    const TLorentzVector& j3, const TLorentzVector& j4,
+    int wlab1, int wlab2, int wlab3, int wlab4)
+{
+    TLorentzVector ja1, ja2, jb1, jb2;
+    int na = 0, nb = 0;
+    auto fill = [](TLorentzVector& out1, TLorentzVector& out2, int& n, const TLorentzVector& j) {
+        if (n++ == 0) out1 = j; else out2 = j;
+    };
+    if (wlab1 == 0) fill(ja1, ja2, na, j1); else fill(jb1, jb2, nb, j1);
+    if (wlab2 == 0) fill(ja1, ja2, na, j2); else fill(jb1, jb2, nb, j2);
+    if (wlab3 == 0) fill(ja1, ja2, na, j3); else fill(jb1, jb2, nb, j3);
+    if (wlab4 == 0) fill(ja1, ja2, na, j4); else fill(jb1, jb2, nb, j4);
+
+    WJetKinematics r;
+    r.Wa_dR     = ja1.DeltaR(ja2);
+    r.Wa_dTheta = ja1.Angle(ja2.Vect());
+    r.Wa_P      = (ja1 + ja2).P();
+    r.Wa_Pt     = (ja1 + ja2).Pt();
+    r.Wa_E      = (ja1 + ja2).E();
+    r.Wb_dR     = jb1.DeltaR(jb2);
+    r.Wb_dTheta = jb1.Angle(jb2.Vect());
+    r.Wb_P      = (jb1 + jb2).P();
+    r.Wb_Pt     = (jb1 + jb2).Pt();
+    r.Wb_E      = (jb1 + jb2).E();
+    return r;
+}
+
+struct HJetKinematics {
+    double H_dR, H_dTheta, H_P, H_Pt, H_E;
+};
+
+inline HJetKinematics compute_H_jet_kinematics(
+    const TLorentzVector& j1, const TLorentzVector& j2)
+{
+    HJetKinematics r;
+    r.H_dR     = j1.DeltaR(j2);
+    r.H_dTheta = j1.Angle(j2.Vect());
+    r.H_P      = (j1 + j2).P();
+    r.H_Pt     = (j1 + j2).Pt();
+    r.H_E      = (j1 + j2).E();
+    return r;
+}
+
+
+struct sel_quarks_fromHiggs {
+    int boson_pdg;
+    explicit sel_quarks_fromHiggs(int pdg = 25) : boson_pdg(pdg) {}
+    ROOT::VecOps::RVec<edm4hep::MCParticleData> operator()(
+        ROOT::VecOps::RVec<edm4hep::MCParticleData> in,
+        const ROOT::VecOps::RVec<int>& parents_relation) const {
+        // Pythia8 can produce multiple copies of the boson with different indices.
+        // Grouping by parent index breaks in that case, so just collect all quarks
+        // that have any direct parent with the target PDG, then require exactly 2.
+        ROOT::VecOps::RVec<edm4hep::MCParticleData> result;
+        for (size_t i = 0; i < in.size(); ++i) {
+            const auto& p = in[i];
+            if (std::abs(p.PDG) > 6 || p.PDG == 0) continue;
+            for (unsigned j = p.parents_begin; j < p.parents_end; ++j) {
+                if (j >= parents_relation.size()) break;
+                int idx = parents_relation[j];
+                if (idx < 0 || idx >= (int)in.size()) continue;
+                if (std::abs(in[idx].PDG) == boson_pdg) { result.emplace_back(p); break; }
+            }
+        }
+        if (result.size() != 2) result.clear();
+        return result;                                  // size 2 or empty
+    }
+};
+
+
+struct sel_nunu_fromHiggs {
+    int boson_pdg;
+    explicit sel_nunu_fromHiggs(int pdg = 25) : boson_pdg(pdg) {}
+    ROOT::VecOps::RVec<edm4hep::MCParticleData> operator()(
+        ROOT::VecOps::RVec<edm4hep::MCParticleData> in,
+        const ROOT::VecOps::RVec<int>& parents_relation) const {
+        // Pythia8 can produce multiple copies of the boson with different indices.
+        // Grouping by parent index breaks in that case, so just collect all quarks
+        // that have any direct parent with the target PDG, then require exactly 2.
+        ROOT::VecOps::RVec<edm4hep::MCParticleData> result;
+        for (size_t i = 0; i < in.size(); ++i) {
+            const auto& p = in[i];
+            if ((std::abs(p.PDG) != 12) & (std::abs(p.PDG) != 14) & (std::abs(p.PDG) != 16)) continue;
+            for (unsigned j = p.parents_begin; j < p.parents_end; ++j) {
+                if (j >= parents_relation.size()) break;
+                int idx = parents_relation[j];
+                if (idx < 0 || idx >= (int)in.size()) continue;
+                if (std::abs(in[idx].PDG) == boson_pdg) { result.emplace_back(p); break; }
+            }
+        }
+        if (result.size() != 2) result.clear();
+        return result;                                  // size 2 or empty
+    }
+};
+
+struct sel_daughter_fromParent {
+    int parent_pdg;
+    int num_daughters;
+    ROOT::VecOps::RVec<int> daughter_pdgs;
+
+    explicit sel_daughter_fromParent(
+        int parent_pdg,
+        int num_daughters,
+        ROOT::VecOps::RVec<int> daughter_pdgs
+    ) : parent_pdg(parent_pdg), num_daughters(num_daughters), daughter_pdgs(daughter_pdgs) {}
+    ROOT::VecOps::RVec<edm4hep::MCParticleData> operator()(
+        ROOT::VecOps::RVec<edm4hep::MCParticleData> in,
+        ROOT::VecOps::RVec<int>& parents_relation) const {
+        // Pythia8 can produce multiple copies of the parent boson with different indices.
+        // Grouping by parent index breaks in that case, so collect all particles whose
+        // |PDG| is in daughter_pdgs and have any direct parent with |PDG| == parent_pdg,
+        // then require exactly num_daughters matches.
+        ROOT::VecOps::RVec<edm4hep::MCParticleData> result;
+        for (size_t i = 0; i < in.size(); ++i) {
+            const auto& p = in[i];
+            bool is_daughter = false;
+            for (size_t k = 0; k < daughter_pdgs.size(); ++k) {
+                if (std::abs(p.PDG) == daughter_pdgs[k]) { is_daughter = true; break; }
+            }
+            if (!is_daughter) continue;
+            for (unsigned j = p.parents_begin; j < p.parents_end; ++j) {
+                if (j >= parents_relation.size()) break;
+                int idx = parents_relation[j];
+                if (idx < 0 || idx >= (int)in.size()) continue;
+                if (std::abs(in[idx].PDG) == parent_pdg) { result.emplace_back(p); break; }
+            }
+        }
+        if (result.size() != num_daughters) result.clear();
+        return result;  // size num_daughters or empty
+    }
+};
+
+
+
+
 
 }
 }

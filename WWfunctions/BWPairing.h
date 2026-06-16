@@ -4,6 +4,73 @@
 #include "Faddeeva.hh"
 #include "Faddeeva_impl.hh"   // inlines the implementation for Cling
 #include <complex>
+#include <array>
+#include <limits>
+#include <cstdint>
+#include <cstring>
+#include <cstdio>
+#include <cerrno>
+#include <fcntl.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
+// Gauss-Legendre nodes/weights (24-point) for log_Z_bw_phasespace_ontf below.
+// Copied from WWKinReco.h to avoid pulling in that header (and its dependencies).
+static constexpr int BWPAIR_GL_N = 24;
+static constexpr std::array<double, BWPAIR_GL_N> BWPAIR_GL24_X = {{
+    -9.9518721999702131e-01, -9.7472855597130947e-01, -9.3827455200273280e-01, -8.8641552700440096e-01,
+    -8.2000198597390295e-01, -7.4012419157855436e-01, -6.4809365193697555e-01, -5.4542147138883956e-01,
+    -4.3379350762604513e-01, -3.1504267969616340e-01, -1.9111886747361631e-01, -6.4056892862605630e-02,
+    +6.4056892862605630e-02, +1.9111886747361631e-01, +3.1504267969616340e-01, +4.3379350762604513e-01,
+    +5.4542147138883956e-01, +6.4809365193697555e-01, +7.4012419157855436e-01, +8.2000198597390295e-01,
+    +8.8641552700440096e-01, +9.3827455200273280e-01, +9.7472855597130947e-01, +9.9518721999702131e-01,
+}};
+static constexpr std::array<double, BWPAIR_GL_N> BWPAIR_GL24_W = {{
+    +1.2341229799987091e-02, +2.8531388628933743e-02, +4.4277438817419551e-02, +5.9298584915436742e-02,
+    +7.3346481411080411e-02, +8.6190161531953288e-02, +9.7618652104114065e-02, +1.0744427011596561e-01,
+    +1.1550566805372561e-01, +1.2167047292780342e-01, +1.2583745634682830e-01, +1.2793819534675221e-01,
+    +1.2793819534675221e-01, +1.2583745634682830e-01, +1.2167047292780342e-01, +1.1550566805372561e-01,
+    +1.0744427011596561e-01, +9.7618652104114065e-02, +8.6190161531953288e-02, +7.3346481411080411e-02,
+    +5.9298584915436742e-02, +4.4277438817419551e-02, +2.8531388628933743e-02, +1.2341229799987091e-02,
+}};
+
+// Normalization integral log Z(m_WW, mW, gW) for the 2D BW×PS pdf.
+// Identical logic to WWKinReco::log_Z_bw_phasespace_ontf but self-contained.
+static inline double _bwpair_log_Z(double m_WW, double mW, double gW) {
+    const double mwgw  = mW * gW;
+    const double mW2   = mW * mW;
+    const double s_ww  = m_WW * m_WW;
+    const double t_min = std::atan(-mW2 / mwgw);
+    const double t_max = std::atan((s_ww - mW2) / mwgw);
+    const double half_d = 0.5 * (t_max - t_min);
+    const double half_s = 0.5 * (t_max + t_min);
+    std::array<double, BWPAIR_GL_N> m_node, inv_m_node;
+    for (int i = 0; i < BWPAIR_GL_N; ++i) {
+        const double t  = half_d * BWPAIR_GL24_X[i] + half_s;
+        const double m2 = mW2 + mwgw * std::tan(t);
+        m_node[i]     = std::sqrt(std::max(m2, 1e-12));
+        inv_m_node[i] = 1.0 / m_node[i];
+    }
+    double Z = 0.0;
+    for (int i = 0; i < BWPAIR_GL_N; ++i) {
+        const double w_h         = BWPAIR_GL24_W[i];
+        const double inv_mh_4sww = inv_m_node[i] / (4.0 * s_ww);
+        {
+            const double lam = (s_ww - 4.0 * m_node[i] * m_node[i]) * s_ww;
+            Z += w_h * w_h * std::sqrt(std::max(lam, 0.0)) * inv_mh_4sww * inv_m_node[i];
+        }
+        for (int j = i + 1; j < BWPAIR_GL_N; ++j) {
+            const double sum2 = (m_node[i] + m_node[j]) * (m_node[i] + m_node[j]);
+            const double dif2 = (m_node[i] - m_node[j]) * (m_node[i] - m_node[j]);
+            const double lam  = (s_ww - sum2) * (s_ww - dif2);
+            Z += 2.0 * w_h * BWPAIR_GL24_W[j] * std::sqrt(std::max(lam, 0.0))
+                 * inv_mh_4sww * inv_m_node[j];
+        }
+    }
+    Z *= half_d * half_d;
+    return std::log(Z > 0.0 ? Z : 1e-300);
+}
 
 
 
@@ -144,6 +211,108 @@ inline BWPairingResult _fill_pairing_result(
     return R;
 }
 
+// ── 2D BW×phase-space lookup table ──────────────────────────────────────────
+//
+// Precomputed detector-smeared Breit-Wigner × phase-space log(pdf) on a
+// uniform 2D mass grid (built by build_2D_BW_Gauss.py).  Load once with
+// init_bw2d_table() before RDataFrame processing, then evaluate cheaply with
+// log_pdf_bw2d(ma, mb) / gof_bw2d(ma, mb).
+//
+// Binary layout (bw2d_table.bin):
+//   offset  0, 8 B  : magic "BW2DV001"
+//   offset  8, 4 B  : n_m  (int32)  — grid points per axis
+//   offset 12, 8 B  : m_lo (double) — lower mass edge [GeV]
+//   offset 20, 8 B  : dm   (double) — grid spacing [GeV]
+//   offset 28, 8 B  : m_WW, mW, gW, sigma_a (4 doubles)
+//   offset 60+      : n_m×n_m log(pdf) doubles, row-major, data[i*n_m+j]
+
+struct BW2DTable {
+    double m_lo, dm, inv_dm;
+    int    n_m;
+    double m_WW, mW, gW, sigma_a;
+    const double* data;   // mmap'd, row-major; data[i*n_m + j], ma=m_lo+i*dm, mb=m_lo+j*dm
+};
+
+static constexpr const char* BW2D_TABLE_PATH =
+    "/afs/cern.ch/user/m/mlevere/private/FCCTutorial/ttThreshold-analysis/bw2d_tables/bw2d_mWW160.0_mw80.419_gw2.049_sig3.6110_dm0.05.bin";
+
+inline BW2DTable* g_bw2d_table_ptr = nullptr;
+
+static void init_bw2d_table() {
+    if (g_bw2d_table_ptr) return;
+    const char* env_path = std::getenv("BW2D_TABLE_PATH");
+    const char* path     = env_path ? env_path : BW2D_TABLE_PATH;
+    int fd = ::open(path, O_RDONLY);
+    if (fd < 0) {
+        std::fprintf(stderr, "[bwpair] cannot open bw2d table %s: %s\n",
+                     path, std::strerror(errno));
+        return;
+    }
+    struct stat st;
+    if (::fstat(fd, &st) != 0) { ::close(fd); return; }
+    void* mmap_base = ::mmap(nullptr, st.st_size, PROT_READ, MAP_SHARED, fd, 0);
+    ::close(fd);
+    if (mmap_base == MAP_FAILED) {
+        std::fprintf(stderr, "[bwpair] mmap of bw2d table failed: %s\n", std::strerror(errno));
+        return;
+    }
+    const char* base = static_cast<const char*>(mmap_base);
+    // memcmp (not uint64_t) because Python writes the magic as literal ASCII bytes;
+    // a uint64_t comparison would be endianness-sensitive here.
+    if (std::memcmp(base, "BW2DV001", 8) != 0) {
+        std::fprintf(stderr, "[bwpair] bw2d table magic mismatch (rebuild via build_2D_BW_Gauss.py)\n");
+        ::munmap(mmap_base, st.st_size);
+        return;
+    }
+    int32_t n_m;    std::memcpy(&n_m,   base +  8, sizeof(n_m));
+    double  m_lo;   std::memcpy(&m_lo,  base + 12, sizeof(m_lo));
+    double  dm;     std::memcpy(&dm,    base + 20, sizeof(dm));
+    double  m_WW;   std::memcpy(&m_WW,  base + 28, sizeof(m_WW));
+    double  mW;     std::memcpy(&mW,    base + 36, sizeof(mW));
+    double  gW;     std::memcpy(&gW,    base + 44, sizeof(gW));
+    double  sigma;  std::memcpy(&sigma, base + 52, sizeof(sigma));
+    BW2DTable* T = new BW2DTable;
+    T->m_lo    = m_lo;
+    T->dm      = dm;
+    T->inv_dm  = 1.0 / dm;
+    T->n_m     = static_cast<int>(n_m);
+    T->m_WW    = m_WW;
+    T->mW      = mW;
+    T->gW      = gW;
+    T->sigma_a = sigma;
+    T->data    = reinterpret_cast<const double*>(base + 60);
+    g_bw2d_table_ptr = T;
+    std::printf("[bwpair] bw2d table mmap'd: n_m=%d, m_WW=%.3f, mW=%.3f, gW=%.3f, sigma_a=%.3f GeV\n",
+                (int)n_m, m_WW, mW, gW, sigma);
+}
+
+// Returns log(pdf_smeared(ma, mb)) via bilinear interpolation.
+// Returns -1e10 if the table is not loaded or inputs are non-finite.
+static inline double log_pdf_bw2d(double ma, double mb) {
+    static constexpr double SENTINEL = -1e10;
+    if (!g_bw2d_table_ptr) return SENTINEL;
+    // NaN guard: (int)NaN is UB and yields INT_MIN, spraying pointer arithmetic off the mmap region.
+    if (!std::isfinite(ma) || !std::isfinite(mb)) return SENTINEL;
+    const BW2DTable& T = *g_bw2d_table_ptr;
+    double fi = (ma - T.m_lo) * T.inv_dm;
+    double fj = (mb - T.m_lo) * T.inv_dm;
+    const double fmax = T.n_m - 1.0;
+    if (fi < 0) fi = 0; else if (fi > fmax) fi = fmax;
+    if (fj < 0) fj = 0; else if (fj > fmax) fj = fmax;
+    int i = (int)fi; if (i >= T.n_m - 1) i = T.n_m - 2;
+    int j = (int)fj; if (j >= T.n_m - 1) j = T.n_m - 2;
+    const double wi = fi - i, wj = fj - j;
+    const int stride = T.n_m;
+    const double* p = T.data + (size_t)i * stride + j;
+    return (1-wi)*((1-wj)*p[0]      + wj*p[1])
+         +    wi *((1-wj)*p[stride] + wj*p[stride + 1]);
+}
+
+// -2 * log_pdf_bw2d: χ²-like goodness-of-fit. Lower = more W-like under the smeared PDF.
+static inline double gof_bw2d(double ma, double mb) {
+    return -2.0 * log_pdf_bw2d(ma, mb);
+}
+
 // Voigt-based pairing: convolves the W Breit-Wigner with a Gaussian of width sigma
 // (the detector di-jet mass resolution). Use the sigma measured from reco-gen smearing.
 inline BWPairingResult bwPairing(const TLorentzVector& j1, const TLorentzVector& j2,
@@ -191,6 +360,72 @@ inline BWPairingResult bwPairingBW(const TLorentzVector& j1, const TLorentzVecto
     return _fill_pairing_result(gof, L, ma, mb, pole_ref);
 }
 
-}}  // namespace FCCAnalyses::WWFunctions
+// --- Return likelihood and probability using 2D BW Distributions --- //
 
+inline BWPairingResult doubleBWPairing(const TLorentzVector& j1, const TLorentzVector& j2,
+                                 const TLorentzVector& j3, const TLorentzVector& j4,
+                                 double m_WW,
+                                 double mW = BWPAIR_MW, double Gamma = BWPAIR_GAMMA){
+
+    static const int order[3][4] = {{0, 1, 2, 3}, {0, 2, 1, 3}, {0, 3, 1, 2}};
+    const TLorentzVector* J[4] = {&j1, &j2, &j3, &j4};
+    const double s        = m_WW * m_WW;
+    const double log_Z    = _bwpair_log_Z(m_WW, mW, Gamma);
+    const double pole_ref = -4.0 * std::log(_bwpair_val(mW, mW, Gamma));
+    double gof[3], L[3]; float ma[3], mb[3];
+
+    for (int k = 0; k < 3; ++k) {
+        const TLorentzVector Wa = *J[order[k][0]] + *J[order[k][1]];
+        const TLorentzVector Wb = *J[order[k][2]] + *J[order[k][3]];
+        const double m_a = Wa.M(), m_b = Wb.M();
+        ma[k] = static_cast<float>(m_a);
+        mb[k] = static_cast<float>(m_b);
+
+        // Kinematic guard: unphysical if m_a + m_b >= m_WW
+        const double lam = (s - (m_a + m_b)*(m_a + m_b)) * (s - (m_a - m_b)*(m_a - m_b));
+        if (lam <= 0.0) {
+            L[k]   = 0.0;
+            gof[k] = 1e30;
+            continue;
+        }
+
+        // Compute gof in log space to avoid underflow
+        const double log_bwa = std::log(_bwpair_val(m_a, mW, Gamma));
+        const double log_bwb = std::log(_bwpair_val(m_b, mW, Gamma));
+        gof[k] = -2.0 * (log_bwa + log_bwb
+                       + 0.5 * std::log(lam)
+                       - std::log(4.0 * s)
+                       - log_Z);
+        L[k]   = std::exp(-0.5 * gof[k]);
+    }
+
+    return _fill_pairing_result(gof, L, ma, mb, pole_ref);
+}
+
+
+inline BWPairingResult doubleBWPairingSmeared(const TLorentzVector& j1, const TLorentzVector& j2,
+                                 const TLorentzVector& j3, const TLorentzVector& j4,
+                                 double mW = BWPAIR_MW) {
+    static const int order[3][4] = {{0, 1, 2, 3}, {0, 2, 1, 3}, {0, 3, 1, 2}};
+    const TLorentzVector* J[4] = {&j1, &j2, &j3, &j4};
+    const double pole_ref = g_bw2d_table_ptr ? gof_bw2d(mW, mW)
+                                             : -4.0 * std::log(_bwpair_val(mW, mW, BWPAIR_GAMMA));
+    double gof[3], L[3]; float ma[3], mb[3];
+    for (int k = 0; k < 3; ++k) {
+        const TLorentzVector Wa = *J[order[k][0]] + *J[order[k][1]];
+        const TLorentzVector Wb = *J[order[k][2]] + *J[order[k][3]];
+        const double m_a = Wa.M(), m_b = Wb.M();
+        ma[k] = static_cast<float>(m_a);
+        mb[k] = static_cast<float>(m_b);
+        gof[k] = gof_bw2d(m_a, m_b);
+        L[k]   = std::exp(-0.5 * gof[k]);
+    }
+    return _fill_pairing_result(gof, L, ma, mb, pole_ref);
+}
+
+
+
+
+}  // namespace FCCAnalyses::WWFunctions
+}
 #endif

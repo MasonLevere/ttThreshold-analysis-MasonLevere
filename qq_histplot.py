@@ -22,6 +22,9 @@ branches = [
     "reco_matched_Wa_mass",
     "reco_matched_Wb_mass",
     "gen_pairing_true",
+    "bwpair_pairing",
+    "bwpair_ma0", "bwpair_ma1", "bwpair_ma2",
+    "bwpair_mb0", "bwpair_mb1", "bwpair_mb2",
     "chi2_etaphi_best_chi2",
     "chi2_etaphi_second_best_chi2",
     "chi2_etaphi_third_best_chi2",
@@ -211,3 +214,63 @@ plot_chi2_efficiency(
     chi2_range=1000,
     label="η/φ method",
     outfile=os.path.join(out_dir, "chi2_etaphi_efficiency.png"))
+
+# ---------------------------------------------------------------------------
+# All-event reco vs gen: use BW pairing result on every event.
+# Pick the two di-jet masses from the chosen pairing, sort them so the
+# higher mass is compared to gen on-shell and lower to gen off-shell.
+# ---------------------------------------------------------------------------
+ma_all = np.stack([data["bwpair_ma0"], data["bwpair_ma1"], data["bwpair_ma2"]], axis=1)
+mb_all = np.stack([data["bwpair_mb0"], data["bwpair_mb1"], data["bwpair_mb2"]], axis=1)
+p      = data["bwpair_pairing"].astype(int)
+
+reco_ma = ma_all[np.arange(len(p)), p]   # mass of first di-jet in chosen pairing
+reco_mb = mb_all[np.arange(len(p)), p]   # mass of second di-jet in chosen pairing
+
+reco_higher = np.maximum(reco_ma, reco_mb)
+reco_lower  = np.minimum(reco_ma, reco_mb)
+
+all_reco_masses = np.concatenate([reco_ma, reco_mb])
+all_gen_masses  = np.concatenate([data["W_on_shell_mass"], data["W_off_shell_mass"]])
+
+h_all_reco = make_mass_hist(all_reco_masses, xmin=0, xmax=90)
+h_all_gen  = make_mass_hist(all_gen_masses,  xmin=0, xmax=90)
+
+plot_hists([h_all_gen, h_all_reco],
+           ["gen (both Ws)", "reco (Voigt pairing, both Ws)"],
+           xlabel="Invariant mass [GeV]",
+           title="W mass: gen vs reco (all events, both Ws combined)",
+           outfile=os.path.join(out_dir, "w_mass_gen_vs_reco_all.png"),
+           norm=True, ratio=True)
+
+# ---------------------------------------------------------------------------
+# Residual: reco - gen, paired by sorting both per event (higher↔on-shell).
+# ---------------------------------------------------------------------------
+delta_on  = (reco_higher - data["W_on_shell_mass"]) / data["W_on_shell_mass"]
+delta_off = (reco_lower  - data["W_off_shell_mass"]) / data["W_off_shell_mass"]
+delta_all = np.concatenate([delta_on, delta_off])
+
+def make_residual_hist(values, nbins=80, xmin=-30, xmax=30, rel=True):
+    if rel:
+        xmin=-1
+        xmax=1
+    h = hist.Hist(hist.axis.Regular(nbins, xmin, xmax, name="delta",
+                                     label="(reco − gen) / gen [GeV]"))
+    h.fill(delta=np.asarray(values, dtype=float))
+    return h
+
+h_res_on  = make_residual_hist(delta_on)
+h_res_off = make_residual_hist(delta_off)
+h_res_all = make_residual_hist(delta_all)
+
+plot_hists([h_res_all],
+           ["both Ws"],
+           xlabel="(reco − gen) / gen  [GeV]",
+           title="W mass residual: (reco − gen) / gen (all events, both Ws)",
+           outfile=os.path.join(out_dir, "w_mass_residual_all.png"))
+
+plot_hists([h_res_on, h_res_off],
+           ["on-shell W (higher mass)", "off-shell W (lower mass)"],
+           xlabel="(reco − gen) / gen  [GeV]",
+           title="W mass residual: (reco − gen) / gen split by shell",
+           outfile=os.path.join(out_dir, "w_mass_residual_on_vs_off.png"), norm=True)
